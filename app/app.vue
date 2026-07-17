@@ -13,10 +13,6 @@ const dayOffset = ref(0)
       <DayToggle v-model="dayOffset" />
     </div>
 
-    <div class="overlay overlay--bottom-left">
-      <TempLegend />
-    </div>
-
     <div class="attribution">
       Weather data: Open-Meteo (MET Norway model) · Map: OpenFreeMap / OpenStreetMap contributors
     </div>
@@ -49,11 +45,6 @@ body,
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-}
-
-.overlay--bottom-left {
-  bottom: 24px;
-  left: 12px;
 }
 
 .attribution {
