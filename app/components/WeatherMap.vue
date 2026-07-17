@@ -3,6 +3,7 @@ import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { tempColor, contrastText } from '../utils/tempScale'
 import { weatherIcon } from '../utils/weatherIcon'
 import { shortDayLabel, longDayLabel } from '../utils/days'
+import { declutter, type Box } from '../utils/declutter'
 
 // Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
 // and screen-reader labels. Falls back to the raw code if the API is unavailable.
@@ -46,6 +47,10 @@ const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 const container = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
+const hiddenCount = ref(0)
+
+/** Minimum screen-space gap (px) enforced between visible markers. */
+const MARKER_GAP = 4
 
 let map: MapLibreMap | undefined
 let abortController: AbortController | undefined
@@ -214,6 +219,35 @@ function renderRange() {
     el.title = `${place}\n${titleParts.join('\n')}`
     el.setAttribute('aria-label', `${place}. Forecast: ${labelParts.join('. ')}.`)
   }
+
+  declutterMarkers()
+}
+
+/**
+ * Hides markers that would overlap higher-priority ones. `markers` is in server
+ * importance order (capitals first, then population), so ties resolve to the more
+ * significant city. Runs after every (re)render — wider ranges make chips bigger,
+ * so more get suppressed, keeping the map legible. Hidden markers reappear on zoom-in
+ * as they stop colliding.
+ */
+function declutterMarkers() {
+  // Show all first so every marker is measurable at its true size.
+  for (const m of markers) m.marker.getElement().style.display = ''
+
+  const boxes: Box[] = markers.map((m) => {
+    const r = m.marker.getElement().getBoundingClientRect()
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+  })
+
+  const visible = declutter(boxes, MARKER_GAP)
+  let hidden = 0
+  for (let i = 0; i < markers.length; i++) {
+    if (!visible[i]) {
+      markers[i]!.marker.getElement().style.display = 'none'
+      hidden++
+    }
+  }
+  hiddenCount.value = hidden
 }
 </script>
 
@@ -229,6 +263,10 @@ function renderRange() {
     <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
       <span>{{ errorMessage }}</span>
       <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+    </div>
+
+    <div v-if="hiddenCount > 0" class="map-hint" role="status">
+      +{{ hiddenCount }} more — zoom in
     </div>
   </div>
 </template>
@@ -264,6 +302,23 @@ function renderRange() {
 
 .map-status--error {
   background: rgba(150, 30, 30, 0.9);
+}
+
+.map-hint {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(20, 24, 30, 0.8);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 .map-status__spinner {
