@@ -19,6 +19,18 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/eslint'],
 
+  app: {
+    head: {
+      title: 'Weather Europe',
+      link: [
+        // SVG for modern browsers, .ico fallback, PNG for iOS home-screen.
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '16x16 32x32' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+      ],
+    },
+  },
+
   runtimeConfig: {
     // Contact string sent in the Open-Meteo User-Agent. Override in prod with
     // NUXT_OPEN_METEO_CONTACT (a role address, not a personal one).
