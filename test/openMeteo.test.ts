@@ -92,4 +92,32 @@ describe('resolveForecasts', () => {
 
     expect(result[0]).toBeUndefined()
   })
+
+  it('uses the free endpoint with no api key by default', async () => {
+    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    await resolveForecasts([{ lat: 1, lng: 2 }])
+
+    const calledUrl = fetchMock.mock.calls[0]![0] as string
+    expect(calledUrl).toContain('https://api.open-meteo.com/v1/forecast')
+    expect(calledUrl).not.toContain('apikey=')
+  })
+
+  it('switches to the commercial customer endpoint and appends the api key when configured', async () => {
+    vi.stubGlobal('useRuntimeConfig', () => ({ openMeteoContact: 'x', openMeteoApiKey: 'secret-key', openMeteoBaseUrl: '' }))
+    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    await resolveForecasts([{ lat: 1, lng: 2 }])
+
+    const calledUrl = fetchMock.mock.calls[0]![0] as string
+    expect(calledUrl).toContain('https://customer-api.open-meteo.com/v1/forecast')
+    expect(calledUrl).toContain('apikey=secret-key')
+  })
+
+  it('uses a self-hosted base URL when configured', async () => {
+    vi.stubGlobal('useRuntimeConfig', () => ({ openMeteoContact: 'x', openMeteoApiKey: '', openMeteoBaseUrl: 'https://weather.internal/v1/forecast' }))
+    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    await resolveForecasts([{ lat: 1, lng: 2 }])
+
+    const calledUrl = fetchMock.mock.calls[0]![0] as string
+    expect(calledUrl).toContain('https://weather.internal/v1/forecast')
+  })
 })

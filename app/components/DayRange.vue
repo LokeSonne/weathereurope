@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { dayLabel } from '../utils/days'
+import { dayLabel, longDayLabel } from '../utils/days'
 
 const model = defineModel<{ from: number; to: number }>({ required: true })
 
@@ -44,7 +44,7 @@ function isEndpoint(day: number): boolean {
 </script>
 
 <template>
-  <div class="day-range">
+  <div class="day-range" role="group" aria-label="Forecast date range">
     <div class="day-range__track" @mouseleave="hoverDay = null">
       <button
         v-for="day in days"
@@ -55,13 +55,15 @@ function isEndpoint(day: number): boolean {
           'day-range__day--in-range': inRange(day),
           'day-range__day--endpoint': isEndpoint(day),
         }"
+        :aria-pressed="inRange(day)"
+        :aria-label="longDayLabel(day)"
         @mouseenter="hoverDay = day"
         @click="onClick(day)"
       >
         {{ dayLabel(day) }}
       </button>
     </div>
-    <div class="day-range__caption">
+    <div class="day-range__caption" aria-live="polite">
       <template v-if="anchor !== null">Select end day…</template>
       <template v-else-if="model.from === model.to">{{ dayLabel(model.from) }}</template>
       <template v-else>{{ dayLabel(model.from) }} → {{ dayLabel(model.to) }}</template>

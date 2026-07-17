@@ -2,7 +2,19 @@
 import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { tempColor, contrastText } from '../utils/tempScale'
 import { weatherIcon } from '../utils/weatherIcon'
-import { shortDayLabel } from '../utils/days'
+import { shortDayLabel, longDayLabel } from '../utils/days'
+
+// Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
+// and screen-reader labels. Falls back to the raw code if the API is unavailable.
+let regionNames: Intl.DisplayNames | undefined
+function countryName(code: string): string {
+  try {
+    regionNames ??= new Intl.DisplayNames(['en'], { type: 'region' })
+    return regionNames.of(code) ?? code
+  } catch {
+    return code
+  }
+}
 
 interface CityFeature {
   type: 'Feature'
@@ -127,12 +139,18 @@ async function renderMarkers(features: CityFeature[]) {
 
     const el = document.createElement('div')
     el.className = properties.capital ? 'city-marker city-marker--capital' : 'city-marker'
+    // Expose each marker as a single labelled image; renderRange() fills in the label.
+    // Focusable so keyboard users can reach the forecast the tooltip shows on hover.
+    el.setAttribute('role', 'img')
+    el.setAttribute('tabindex', '0')
 
     const pill = document.createElement('div')
     pill.className = 'city-marker__pill'
+    pill.setAttribute('aria-hidden', 'true')
 
     const name = document.createElement('div')
     name.className = 'city-marker__name'
+    name.setAttribute('aria-hidden', 'true')
     name.textContent = (properties.capital ? '★ ' : '') + properties.name
 
     el.append(pill, name)
@@ -159,6 +177,7 @@ function renderRange() {
   for (const m of markers) {
     m.pill.replaceChildren()
     const titleParts: string[] = []
+    const labelParts: string[] = []
 
     for (let day = lo; day <= hi; day++) {
       const t = m.data.temps[day]
@@ -187,9 +206,13 @@ function renderRange() {
       m.pill.append(cell)
 
       titleParts.push(`${shortDayLabel(day)} ${t}° ${label}`)
+      labelParts.push(`${longDayLabel(day)}, ${t} degrees Celsius, ${label}`)
     }
 
-    m.marker.getElement().title = `${m.data.name}, ${m.data.country}\n${titleParts.join('\n')}`
+    const place = `${m.data.name}, ${countryName(m.data.country)}${m.data.capital ? ' (capital)' : ''}`
+    const el = m.marker.getElement()
+    el.title = `${place}\n${titleParts.join('\n')}`
+    el.setAttribute('aria-label', `${place}. Forecast: ${labelParts.join('. ')}.`)
   }
 }
 </script>
@@ -287,6 +310,13 @@ function renderRange() {
 
 .city-marker--capital {
   z-index: 2;
+}
+
+.city-marker:focus-visible {
+  outline: 3px solid #1a73e8;
+  outline-offset: 2px;
+  border-radius: 10px;
+  z-index: 3;
 }
 
 .city-marker__pill {

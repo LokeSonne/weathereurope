@@ -82,9 +82,15 @@ export async function resolveForecasts(points: Point[]): Promise<Array<CityForec
 async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | undefined>> {
   const latitude = points.map((p) => p.lat).join(',')
   const longitude = points.map((p) => p.lng).join(',')
-  const contact = useRuntimeConfig().openMeteoContact
+  const { openMeteoContact, openMeteoApiKey, openMeteoBaseUrl } = useRuntimeConfig()
 
-  const url = new URL('https://api.open-meteo.com/v1/forecast')
+  // Endpoint precedence: explicit base URL (self-host) → commercial customer endpoint
+  // when an API key is set → free non-commercial API.
+  const baseUrl =
+    openMeteoBaseUrl ||
+    (openMeteoApiKey ? 'https://customer-api.open-meteo.com/v1/forecast' : 'https://api.open-meteo.com/v1/forecast')
+
+  const url = new URL(baseUrl)
   url.searchParams.set('latitude', latitude)
   url.searchParams.set('longitude', longitude)
   url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,weather_code')
@@ -92,9 +98,10 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
   url.searchParams.set('forecast_days', String(FORECAST_DAYS))
   url.searchParams.set('timezone', 'auto')
   url.searchParams.set('models', 'metno_seamless')
+  if (openMeteoApiKey) url.searchParams.set('apikey', openMeteoApiKey)
 
   const response = await $fetch<OpenMeteoResponse | OpenMeteoResponse[]>(url.toString(), {
-    headers: { 'User-Agent': `weathereurope.app (contact: ${contact})` },
+    headers: { 'User-Agent': `weathereurope.app (contact: ${openMeteoContact})` },
     retry: 1,
     timeout: 10_000,
   })

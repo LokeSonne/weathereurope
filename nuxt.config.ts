@@ -23,6 +23,11 @@ export default defineNuxtConfig({
     // Contact string sent in the Open-Meteo User-Agent. Override in prod with
     // NUXT_OPEN_METEO_CONTACT (a role address, not a personal one).
     openMeteoContact: 'ops@weathereurope.app',
+    // Licensing knobs (see README). Set NUXT_OPEN_METEO_API_KEY for the commercial
+    // plan (auto-switches to the customer endpoint), or NUXT_OPEN_METEO_BASE_URL to
+    // point at a self-hosted Open-Meteo instance. Empty → free non-commercial API.
+    openMeteoApiKey: '',
+    openMeteoBaseUrl: '',
   },
 
   nitro: {

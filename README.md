@@ -44,6 +44,8 @@ Nuxt auto-detects Vercel — no `vercel.json` or preset needed. Import the repo 
 | `UPSTASH_REDIS_REST_URL` | Shared cache + rate-limit store (REST) | Recommended in prod |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash auth token | Recommended in prod |
 | `NUXT_OPEN_METEO_CONTACT` | Contact string sent in the Open-Meteo `User-Agent` (use a role address) | Recommended |
+| `NUXT_OPEN_METEO_API_KEY` | Open-Meteo **commercial** API key (auto-switches to the customer endpoint) | See licensing |
+| `NUXT_OPEN_METEO_BASE_URL` | Override the forecast base URL (e.g. a self-hosted instance) | See licensing |
 
 **Why Upstash:** on serverless the default cache is per-instance in-memory — wiped on cold
 start and not shared, so hit rates collapse and every viewport re-hits Open-Meteo. Set the
@@ -52,10 +54,26 @@ cache and the rate limiter become shared and durable. Without them the app still
 with a weaker (per-instance) cache — fine for local dev. To use Vercel KV or another store
 instead, swap the driver in `nuxt.config.ts` (`nitro.storage`).
 
+### Weather data licensing (decide before a public launch)
+
+Open-Meteo's free API is **non-commercial only**. The code supports every path via config —
+no code change needed:
+
+| Path | Config | When |
+| --- | --- | --- |
+| **Free non-commercial ← current choice** | (none) | Personal / demo / internal, non-revenue |
+| Commercial plan | `NUXT_OPEN_METEO_API_KEY` | Public/commercial site; simplest to run |
+| Self-host Open-Meteo | `NUXT_OPEN_METEO_BASE_URL` (point at your instance) | High volume / no per-call cost, you run the infra |
+
+Precedence: explicit base URL → customer endpoint (when a key is set) → free API.
+
+> ⚠️ **This deployment runs on the free, non-commercial tier by design.** Do **not** put it
+> behind ads, a paywall, or any revenue-generating/commercial use without first switching to
+> the commercial plan or a self-hosted instance (set the env var above — no code change). If
+> the intended use ever changes, revisit this decision.
+
 ### Notes / limitations
 
-- **Open-Meteo terms:** the free tier is non-commercial. A public production deployment
-  should use their commercial plan or a self-hosted instance.
 - **Rate limiting** is a best-effort abuse backstop (fixed window, non-atomic), currently
   60 req/min per IP — tune in `city-forecast.get.ts`.
 - **CDN caching:** the API sends `s-maxage`/`stale-while-revalidate`, so Vercel's edge caches
