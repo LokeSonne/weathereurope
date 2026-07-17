@@ -4,14 +4,14 @@
 // credentials are present (e.g. on Vercel). Without them — local dev — Nitro falls
 // back to its default in-memory storage. Env vars are read at build time, which is
 // when Vercel injects them, so the driver is baked into the deployed bundle.
-const hasUpstash = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+// Accept either the Upstash-native names or Vercel's KV-style names — both are just the
+// Redis REST URL + token. Set a *custom prefix* in the Vercel integration and these stop
+// matching, so leave that prefix empty.
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
 
-const upstashMount = hasUpstash
-  ? {
-      driver: 'upstash',
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    }
+const upstashMount = redisUrl && redisToken
+  ? { driver: 'upstash', url: redisUrl, token: redisToken }
   : undefined
 
 export default defineNuxtConfig({

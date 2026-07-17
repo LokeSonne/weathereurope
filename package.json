@@ -2,6 +2,10 @@
   "name": "weathereurope",
   "type": "module",
   "private": true,
+  "packageManager": "pnpm@10.16.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
