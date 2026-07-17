@@ -8,10 +8,14 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "build:cities": "node scripts/build-cities.mjs"
   },
   "dependencies": {
     "@nuxt/eslint": "1.16.0",
+    "@upstash/redis": "^1.38.0",
     "eslint": "^10.7.0",
     "h3": "1.15.11",
     "maplibre-gl": "^5.1.0",
@@ -21,6 +25,7 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
+    "vitest": "^4.1.10",
     "vue-tsc": "^2.2.0"
   }
 }

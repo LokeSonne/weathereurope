@@ -7,49 +7,74 @@ export interface CityForecast {
   codes: number[]
 }
 
+interface CachedForecast extends CityForecast {
+  /** Epoch ms the data was fetched — used to distinguish fresh from stale entries. */
+  fetchedAt: number
+}
+
 interface Point {
   lat: number
   lng: number
 }
 
-const CACHE_TTL_SECONDS = 40 * 60
-const USER_AGENT = 'weathereurope.app (city weather map demo; contact: loke@resights.dk)'
+/** How long a cached entry counts as fresh before we try to refresh it. */
+const FRESH_TTL_MS = 40 * 60 * 1000
+/** How long entries are retained overall, so we can serve them stale if Open-Meteo is down. */
+const HARD_TTL_SECONDS = 24 * 60 * 60
 
 function cacheKey(point: Point): string {
   return `forecast:${point.lat}:${point.lng}`
 }
 
 /**
- * Resolves the per-day forecast for each point, serving cache hits directly and
- * issuing a single bulk Open-Meteo request for the misses.
+ * Resolves the per-day forecast for each point. Fresh cache hits are served directly;
+ * stale/absent points are refetched in one bulk Open-Meteo call. If that call fails,
+ * stale cached data is served as a fallback (points with no cached data at all are
+ * returned as `undefined` so the caller can simply omit them) — a single flaky upstream
+ * never fails the whole response.
  */
 export async function resolveForecasts(points: Point[]): Promise<Array<CityForecast | undefined>> {
   const storage = useStorage('forecast-cache')
+  const now = Date.now()
   const results = new Array<CityForecast | undefined>(points.length)
-  const misses: Array<{ index: number; point: Point }> = []
+  const misses: Array<{ index: number; point: Point; stale?: CachedForecast }> = []
 
   await Promise.all(
     points.map(async (point, index) => {
-      const cached = await storage.getItem<CityForecast>(cacheKey(point))
-      if (cached) {
-        results[index] = cached
+      const cached = await storage.getItem<CachedForecast>(cacheKey(point))
+      if (cached && now - cached.fetchedAt < FRESH_TTL_MS) {
+        results[index] = { temps: cached.temps, codes: cached.codes }
       } else {
-        misses.push({ index, point })
+        misses.push({ index, point, stale: cached ?? undefined })
       }
     }),
   )
 
-  if (misses.length > 0) {
-    const fetched = await fetchBulkForecast(misses.map((m) => m.point))
-    await Promise.all(
-      misses.map(async (miss, i) => {
-        const forecast = fetched[i]
-        if (!forecast) return
-        results[miss.index] = forecast
-        await storage.setItem(cacheKey(miss.point), forecast, { ttl: CACHE_TTL_SECONDS })
-      }),
-    )
+  if (misses.length === 0) return results
+
+  let fetched: Array<CityForecast | undefined> = []
+  try {
+    fetched = await fetchBulkForecast(misses.map((m) => m.point))
+  } catch (error) {
+    // Upstream failed — fall back to stale data where we have it.
+    console.error('Open-Meteo request failed; serving stale forecasts where available', error)
   }
+
+  await Promise.all(
+    misses.map(async (miss, i) => {
+      const fresh = fetched[i]
+      if (fresh) {
+        results[miss.index] = fresh
+        await storage.setItem(
+          cacheKey(miss.point),
+          { ...fresh, fetchedAt: now } satisfies CachedForecast,
+          { ttl: HARD_TTL_SECONDS },
+        )
+      } else if (miss.stale) {
+        results[miss.index] = { temps: miss.stale.temps, codes: miss.stale.codes }
+      }
+    }),
+  )
 
   return results
 }
@@ -57,6 +82,7 @@ export async function resolveForecasts(points: Point[]): Promise<Array<CityForec
 async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | undefined>> {
   const latitude = points.map((p) => p.lat).join(',')
   const longitude = points.map((p) => p.lng).join(',')
+  const contact = useRuntimeConfig().openMeteoContact
 
   const url = new URL('https://api.open-meteo.com/v1/forecast')
   url.searchParams.set('latitude', latitude)
@@ -68,7 +94,9 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
   url.searchParams.set('models', 'metno_seamless')
 
   const response = await $fetch<OpenMeteoResponse | OpenMeteoResponse[]>(url.toString(), {
-    headers: { 'User-Agent': USER_AGENT },
+    headers: { 'User-Agent': `weathereurope.app (contact: ${contact})` },
+    retry: 1,
+    timeout: 10_000,
   })
 
   // Open-Meteo returns a single object (not an array) when only one location was requested.

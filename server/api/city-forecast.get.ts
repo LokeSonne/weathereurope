@@ -1,7 +1,10 @@
 import { resolveForecasts } from '../utils/openMeteo'
 import { selectCities, type BBox } from '../utils/cities'
+import { enforceRateLimit } from '../utils/rateLimit'
 
 export default defineEventHandler(async (event) => {
+  await enforceRateLimit(event, { limit: 60, windowSeconds: 60 })
+
   const query = getQuery(event)
 
   const bbox: BBox = {
@@ -34,6 +37,10 @@ export default defineEventHandler(async (event) => {
       },
     }]
   })
+
+  // Let the CDN (e.g. Vercel's edge) serve identical viewports without re-invoking the
+  // function, and keep serving slightly stale data while it revalidates.
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600')
 
   return { type: 'FeatureCollection' as const, features }
 })

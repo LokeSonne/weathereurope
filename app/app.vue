@@ -1,20 +1,22 @@
 <script setup lang="ts">
-const dayOffset = ref(0)
+const range = ref({ from: 0, to: 2 })
 </script>
 
 <template>
   <div class="page">
     <NuxtRouteAnnouncer />
     <ClientOnly>
-      <WeatherMap :day-offset="dayOffset" />
+      <WeatherMap :range="range" />
     </ClientOnly>
 
     <div class="overlay overlay--top">
-      <DayToggle v-model="dayOffset" />
+      <DayRange v-model="range" />
     </div>
 
     <div class="attribution">
-      Weather data: Open-Meteo (MET Norway model) · Map: OpenFreeMap / OpenStreetMap contributors
+      Weather: Open-Meteo (MET Norway model) · Cities:
+      <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) ·
+      Map: OpenFreeMap / OpenStreetMap contributors
     </div>
   </div>
 </template>
@@ -57,5 +59,10 @@ body,
   background: rgba(255, 255, 255, 0.6);
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: underline;
 }
 </style>

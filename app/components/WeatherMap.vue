@@ -2,6 +2,7 @@
 import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { tempColor, contrastText } from '../utils/tempScale'
 import { weatherIcon } from '../utils/weatherIcon'
+import { shortDayLabel } from '../utils/days'
 
 interface CityFeature {
   type: 'Feature'
@@ -23,17 +24,17 @@ interface CityFeatureCollection {
 interface CityMarker {
   marker: Marker
   pill: HTMLElement
-  icon: HTMLElement
-  temp: HTMLElement
-  name: HTMLElement
   data: CityFeature['properties']
 }
 
-const props = defineProps<{ dayOffset: number }>()
+const props = defineProps<{ range: { from: number; to: number } }>()
 
 const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 
 const container = ref<HTMLDivElement>()
+const loading = ref(false)
+const errorMessage = ref<string | null>(null)
+
 let map: MapLibreMap | undefined
 let abortController: AbortController | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
@@ -68,7 +69,7 @@ onBeforeUnmount(() => {
   map?.remove()
 })
 
-watch(() => props.dayOffset, renderDay)
+watch(() => [props.range.from, props.range.to], renderRange)
 
 function scheduleRefresh() {
   clearTimeout(debounceTimer)
@@ -84,7 +85,11 @@ async function refreshCities() {
   if (!map) return
   const bounds = map.getBounds()
   abortController?.abort()
-  abortController = new AbortController()
+  const controller = new AbortController()
+  abortController = controller
+
+  loading.value = true
+  errorMessage.value = null
 
   try {
     const data = await $fetch<CityFeatureCollection>('/api/city-forecast', {
@@ -95,13 +100,20 @@ async function refreshCities() {
         maxLat: bounds.getNorth(),
         zoom: map.getZoom(),
       },
-      signal: abortController.signal,
+      signal: controller.signal,
     })
     renderMarkers(data.features)
   } catch (error) {
-    if ((error as { name?: string }).name !== 'AbortError') {
-      console.error('Failed to load city forecasts', error)
-    }
+    // A newer request superseded this one — ignore its outcome entirely.
+    if ((error as { name?: string }).name === 'AbortError') return
+    console.error('Failed to load city forecasts', error)
+    errorMessage.value =
+      (error as { statusCode?: number }).statusCode === 429
+        ? 'Too many requests — pausing updates for a moment.'
+        : 'Couldn’t load weather data.'
+  } finally {
+    // Only the latest request controls the shared loading flag.
+    if (abortController === controller) loading.value = false
   }
 }
 
@@ -119,14 +131,6 @@ async function renderMarkers(features: CityFeature[]) {
     const pill = document.createElement('div')
     pill.className = 'city-marker__pill'
 
-    const icon = document.createElement('span')
-    icon.className = 'city-marker__icon'
-
-    const temp = document.createElement('span')
-    temp.className = 'city-marker__temp'
-
-    pill.append(icon, temp)
-
     const name = document.createElement('div')
     name.className = 'city-marker__name'
     name.textContent = (properties.capital ? '★ ' : '') + properties.name
@@ -137,37 +141,136 @@ async function renderMarkers(features: CityFeature[]) {
       .setLngLat(feature.geometry.coordinates)
       .addTo(map)
 
-    markers.push({ marker, pill, icon, temp, name, data: properties })
+    markers.push({ marker, pill, data: properties })
   }
 
-  renderDay()
+  renderRange()
 }
 
-/** Updates every marker's pill (temperature + icon + color) to the selected day, without refetching. */
-function renderDay() {
-  const day = props.dayOffset
+/**
+ * Rebuilds every marker's pill as one cell per day in the selected range
+ * (weekday + icon + temperature, each cell tinted by its own temperature).
+ * Runs on range change and after a fetch — no network call needed.
+ */
+function renderRange() {
+  const lo = Math.min(props.range.from, props.range.to)
+  const hi = Math.max(props.range.from, props.range.to)
+
   for (const m of markers) {
-    const t = m.data.temps[day]
-    const code = m.data.codes[day]
-    if (t === undefined || code === undefined) continue
-    const { icon, label } = weatherIcon(code)
-    m.icon.textContent = icon
-    m.temp.textContent = `${t}°`
-    m.pill.style.backgroundColor = tempColor(t)
-    m.pill.style.color = contrastText(t)
-    m.marker.getElement().title = `${m.data.name}, ${m.data.country} — ${label}, ${t}°C`
+    m.pill.replaceChildren()
+    const titleParts: string[] = []
+
+    for (let day = lo; day <= hi; day++) {
+      const t = m.data.temps[day]
+      const code = m.data.codes[day]
+      if (t === undefined || code === undefined) continue
+      const { icon, label } = weatherIcon(code)
+
+      const cell = document.createElement('div')
+      cell.className = 'city-marker__day'
+      cell.style.backgroundColor = tempColor(t)
+      cell.style.color = contrastText(t)
+
+      const wday = document.createElement('span')
+      wday.className = 'city-marker__wday'
+      wday.textContent = shortDayLabel(day)
+
+      const iconEl = document.createElement('span')
+      iconEl.className = 'city-marker__icon'
+      iconEl.textContent = icon
+
+      const tempEl = document.createElement('span')
+      tempEl.className = 'city-marker__temp'
+      tempEl.textContent = `${t}°`
+
+      cell.append(wday, iconEl, tempEl)
+      m.pill.append(cell)
+
+      titleParts.push(`${shortDayLabel(day)} ${t}° ${label}`)
+    }
+
+    m.marker.getElement().title = `${m.data.name}, ${m.data.country}\n${titleParts.join('\n')}`
   }
 }
 </script>
 
 <template>
-  <div ref="container" class="weather-map" />
+  <div class="weather-map">
+    <div ref="container" class="weather-map__canvas" />
+
+    <div v-if="loading" class="map-status map-status--loading" role="status">
+      <span class="map-status__spinner" aria-hidden="true" />
+      Updating…
+    </div>
+
+    <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .weather-map {
   position: absolute;
   inset: 0;
+}
+
+.weather-map__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(20, 24, 30, 0.8);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.map-status--error {
+  background: rgba(150, 30, 30, 0.9);
+}
+
+.map-status__spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: map-status-spin 0.7s linear infinite;
+}
+
+.map-status__retry {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.map-status__retry:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes map-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
 
@@ -188,13 +291,9 @@ function renderDay() {
 
 .city-marker__pill {
   display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.4;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: hidden;
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -205,8 +304,39 @@ function renderDay() {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
+/* One cell per day in the selected range. */
+.city-marker__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 6px;
+  min-width: 30px;
+}
+
+.city-marker__day + .city-marker__day {
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.city-marker__wday {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
 .city-marker__icon {
   font-size: 14px;
+  line-height: 1;
+}
+
+.city-marker__temp {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .city-marker__name {
