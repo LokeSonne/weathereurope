@@ -1,16 +1,18 @@
 <script setup lang="ts">
 const range = ref({ from: 0, to: 2 })
+const tshirt = ref(false)
 </script>
 
 <template>
   <div class="page">
     <NuxtRouteAnnouncer />
     <ClientOnly>
-      <WeatherMap :range="range" />
+      <WeatherMap :range="range" :tshirt="tshirt" />
     </ClientOnly>
 
     <div class="overlay overlay--top">
       <DayRange v-model="range" />
+      <TshirtToggle v-model="tshirt" />
     </div>
 
     <div class="attribution">
@@ -47,6 +49,10 @@ body,
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .attribution {

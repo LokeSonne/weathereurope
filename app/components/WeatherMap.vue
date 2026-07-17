@@ -4,6 +4,7 @@ import { tempColor, contrastText } from '../utils/tempScale'
 import { weatherIcon } from '../utils/weatherIcon'
 import { shortDayLabel, longDayLabel } from '../utils/days'
 import { declutter, type Box } from '../utils/declutter'
+import { isTshirtWeather } from '../utils/tshirt'
 
 // Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
 // and screen-reader labels. Falls back to the raw code if the API is unavailable.
@@ -38,9 +39,11 @@ interface CityMarker {
   marker: Marker
   pill: HTMLElement
   data: CityFeature['properties']
+  /** Whether any day in the current range is t-shirt weather (drives highlight + declutter priority). */
+  tshirtOk: boolean
 }
 
-const props = defineProps<{ range: { from: number; to: number } }>()
+const props = defineProps<{ range: { from: number; to: number }; tshirt: boolean }>()
 
 const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 
@@ -86,7 +89,7 @@ onBeforeUnmount(() => {
   map?.remove()
 })
 
-watch(() => [props.range.from, props.range.to], renderRange)
+watch(() => [props.range.from, props.range.to, props.tshirt], renderRange)
 
 function scheduleRefresh() {
   clearTimeout(debounceTimer)
@@ -164,7 +167,7 @@ async function renderMarkers(features: CityFeature[]) {
       .setLngLat(feature.geometry.coordinates)
       .addTo(map)
 
-    markers.push({ marker, pill, data: properties })
+    markers.push({ marker, pill, data: properties, tshirtOk: false })
   }
 
   renderRange()
@@ -183,15 +186,18 @@ function renderRange() {
     m.pill.replaceChildren()
     const titleParts: string[] = []
     const labelParts: string[] = []
+    let anyTshirt = false
 
     for (let day = lo; day <= hi; day++) {
       const t = m.data.temps[day]
       const code = m.data.codes[day]
       if (t === undefined || code === undefined) continue
       const { icon, label } = weatherIcon(code)
+      const tshirt = isTshirtWeather(t, code)
+      if (tshirt) anyTshirt = true
 
       const cell = document.createElement('div')
-      cell.className = 'city-marker__day'
+      cell.className = props.tshirt && tshirt ? 'city-marker__day city-marker__day--tshirt' : 'city-marker__day'
       cell.style.backgroundColor = tempColor(t)
       cell.style.color = contrastText(t)
 
@@ -211,13 +217,17 @@ function renderRange() {
       m.pill.append(cell)
 
       titleParts.push(`${shortDayLabel(day)} ${t}° ${label}`)
-      labelParts.push(`${longDayLabel(day)}, ${t} degrees Celsius, ${label}`)
+      labelParts.push(`${longDayLabel(day)}, ${t} degrees Celsius, ${label}${tshirt ? ', t-shirt weather' : ''}`)
     }
 
     const place = `${m.data.name}, ${countryName(m.data.country)}${m.data.capital ? ' (capital)' : ''}`
     const el = m.marker.getElement()
     el.title = `${place}\n${titleParts.join('\n')}`
     el.setAttribute('aria-label', `${place}. Forecast: ${labelParts.join('. ')}.`)
+    m.tshirtOk = anyTshirt
+    // In t-shirt mode, fade cities with no warm-and-dry day in the range so the
+    // qualifying ones pop.
+    el.classList.toggle('city-marker--faded', props.tshirt && !anyTshirt)
   }
 
   declutterMarkers()
@@ -226,24 +236,29 @@ function renderRange() {
 /**
  * Hides markers that would overlap higher-priority ones. `markers` is in server
  * importance order (capitals first, then population), so ties resolve to the more
- * significant city. Runs after every (re)render — wider ranges make chips bigger,
- * so more get suppressed, keeping the map legible. Hidden markers reappear on zoom-in
- * as they stop colliding.
+ * significant city. In t-shirt mode, qualifying cities are promoted so they win
+ * collisions against faded ones. Runs after every (re)render — wider ranges make chips
+ * bigger, so more get suppressed. Hidden markers reappear on zoom-in as they stop colliding.
  */
 function declutterMarkers() {
   // Show all first so every marker is measurable at its true size.
   for (const m of markers) m.marker.getElement().style.display = ''
 
-  const boxes: Box[] = markers.map((m) => {
-    const r = m.marker.getElement().getBoundingClientRect()
+  // Placement order = priority. In t-shirt mode, warm-and-dry cities go first (stable
+  // sort preserves importance within each group) so they aren't hidden behind faded ones.
+  const order = markers.map((_, i) => i)
+  if (props.tshirt) order.sort((a, b) => Number(markers[b]!.tshirtOk) - Number(markers[a]!.tshirtOk))
+
+  const boxes: Box[] = order.map((i) => {
+    const r = markers[i]!.marker.getElement().getBoundingClientRect()
     return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
   })
 
   const visible = declutter(boxes, MARKER_GAP)
   let hidden = 0
-  for (let i = 0; i < markers.length; i++) {
-    if (!visible[i]) {
-      markers[i]!.marker.getElement().style.display = 'none'
+  for (let k = 0; k < order.length; k++) {
+    if (!visible[k]) {
+      markers[order[k]!]!.marker.getElement().style.display = 'none'
       hidden++
     }
   }
@@ -402,6 +417,17 @@ function declutterMarkers() {
 
 .city-marker__day + .city-marker__day {
   border-left: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* T-shirt-weather mode: ring the warm-and-dry day cells, fade cities with none. */
+.city-marker__day--tshirt {
+  box-shadow: inset 0 0 0 2px #10b981;
+}
+
+.city-marker--faded {
+  opacity: 0.3;
+  filter: grayscale(0.5);
+  z-index: 0;
 }
 
 .city-marker__wday {

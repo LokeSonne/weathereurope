@@ -1,9 +1,10 @@
-# weathereurope
+# T-Shirt Weather
 
-An interactive map of European cities showing per-day weather (temperature + condition
-icon) for a selectable date range. Capitals show first; smaller cities and towns reveal
-as you zoom in. Built with Nuxt 4 + MapLibre GL, weather from
-[Open-Meteo](https://open-meteo.com/) (MET Norway model), city data from
+**T-Shirt Weather** is an interactive map of European cities showing per-day weather
+(temperature + condition icon) for a selectable date range. Capitals show first; smaller
+cities and towns reveal as you zoom in, and a **t-shirt weather** toggle highlights the
+places where it's warm and dry enough for just a tee. Built with Nuxt 4 + MapLibre GL,
+weather from [Open-Meteo](https://open-meteo.com/) (MET Norway model), city data from
 [GeoNames](https://www.geonames.org/).
 
 ## Development

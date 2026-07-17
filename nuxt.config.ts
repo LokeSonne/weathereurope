@@ -21,7 +21,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Weather Europe',
+      title: 'T-Shirt Weather',
+      meta: [
+        { name: 'description', content: 'T-Shirt Weather — see where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.' },
+        { property: 'og:title', content: 'T-Shirt Weather' },
+        { property: 'og:description', content: 'See where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.' },
+        { property: 'og:type', content: 'website' },
+      ],
       link: [
         // SVG for modern browsers, .ico fallback, PNG for iOS home-screen.
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
