@@ -20,20 +20,22 @@ const active = defineModel<boolean>({ required: true })
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(20, 24, 30, 0.75);
-  backdrop-filter: blur(6px);
-  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 20, 26, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 }
 
 .tshirt-toggle:hover {
-  background: rgba(20, 24, 30, 0.9);
+  color: #fff;
+  background: rgba(17, 20, 26, 0.92);
 }
 
 .tshirt-toggle--active {

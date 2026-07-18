@@ -54,6 +54,8 @@ function isEndpoint(day: number): boolean {
         :class="{
           'day-range__day--in-range': inRange(day),
           'day-range__day--endpoint': isEndpoint(day),
+          'day-range__day--start': day === activeLo,
+          'day-range__day--end': day === activeHi,
         }"
         :aria-pressed="inRange(day)"
         :aria-label="longDayLabel(day)"
@@ -73,49 +75,67 @@ function isEndpoint(day: number): boolean {
 
 <style scoped>
 .day-range {
-  background: rgba(20, 24, 30, 0.75);
-  backdrop-filter: blur(6px);
-  border-radius: 8px;
-  padding: 4px;
+  background: rgba(17, 20, 26, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 5px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
 }
 
+/* No gaps, so the selected days read as one continuous band. */
 .day-range__track {
   display: flex;
-  gap: 2px;
 }
 
 .day-range__day {
+  min-width: 46px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.68);
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 7px 8px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.14s ease, color 0.14s ease;
 }
 
-.day-range__day:hover {
-  background: rgba(255, 255, 255, 0.08);
+/* Hover only affects days that aren't part of the selection. */
+.day-range__day:not(.day-range__day--in-range):hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
 }
 
 .day-range__day--in-range {
-  background: rgba(96, 165, 250, 0.35);
+  background: rgba(59, 130, 246, 0.3);
   color: #fff;
 }
 
 .day-range__day--endpoint {
-  background: #fff;
-  color: #14181e;
+  background: #2563eb;
+  color: #fff;
   font-weight: 700;
+}
+
+/* Round only the outer edges of the band. */
+.day-range__day--start {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.day-range__day--end {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .day-range__caption {
   text-align: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
-  margin-top: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-top: 6px;
   min-height: 13px;
 }
 </style>
