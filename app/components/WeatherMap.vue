@@ -41,7 +41,8 @@ interface CityMarker {
   /** Minimal fallback shown (instead of the full chip) when decluttered. */
   dot: HTMLElement
   data: CityFeature['properties']
-  /** Whether any day in the current range is t-shirt weather (drives highlight + declutter priority). */
+  /** Whether any day in the current range is t-shirt weather (drives the highlight, and
+   *  visibility when the t-shirt filter is on). */
   tshirtOk: boolean
 }
 
@@ -52,6 +53,8 @@ const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 const container = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
+// True when the t-shirt filter is on but no city in view has a matching day.
+const noTshirtMatches = ref(false)
 
 /**
  * Overlap tolerance (px) between full chips. Negative means chips may overlap by up to this
@@ -243,9 +246,6 @@ function renderRange() {
     el.title = `${place}\n${titleParts.join('\n')}`
     el.setAttribute('aria-label', `${place}. Forecast: ${labelParts.join('. ')}.`)
     m.tshirtOk = anyTshirt
-    // In t-shirt mode, fade cities with no warm-and-dry day in the range so the
-    // qualifying ones pop.
-    el.classList.toggle('city-marker--faded', props.tshirt && !anyTshirt)
   }
 
   declutterMarkers()
@@ -255,19 +255,23 @@ function renderRange() {
  * Collapses markers that would overlap higher-priority ones into a minimal dot (rather
  * than hiding them), so every city stays visible and interactive. `markers` is in server
  * importance order (capitals first, then population), so ties resolve to the more
- * significant city. In t-shirt mode, qualifying cities are promoted so they win collisions
- * against faded ones. Runs after every (re)render — wider ranges make chips bigger, so more
- * collapse. Collapsed chips expand back on zoom-in as they stop colliding.
+ * significant city. When the t-shirt filter is on, cities with no warm-and-dry day in the
+ * range are hidden outright and left out of the layout. Runs after every (re)render — wider
+ * ranges make chips bigger, so more collapse. Collapsed chips expand back on zoom-in.
  */
 function declutterMarkers() {
-  // Restore all full chips first so every marker is measured at its true size.
-  for (const m of markers) m.marker.getElement().classList.remove('city-marker--min')
+  // Restore full chips, and hide cities with no matching day when the t-shirt filter is on.
+  for (const m of markers) {
+    const el = m.marker.getElement()
+    el.classList.remove('city-marker--min')
+    el.classList.toggle('city-marker--hidden', props.tshirt && !m.tshirtOk)
+  }
 
-  // Placement order = priority. In t-shirt mode, warm-and-dry cities go first (stable
-  // sort preserves importance within each group) so they aren't collapsed behind faded ones.
-  const order = markers.map((_, i) => i)
-  if (props.tshirt)
-    order.sort((a, b) => Number(markers[b]!.tshirtOk) - Number(markers[a]!.tshirtOk))
+  // Lay out only the markers that are still visible (importance order).
+  const order = markers.map((_, i) => i).filter((i) => !(props.tshirt && !markers[i]!.tshirtOk))
+
+  // Filter is on, cities are in view, but none of them match.
+  noTshirtMatches.value = props.tshirt && markers.length > 0 && order.length === 0
 
   const boxes: Box[] = order.map((i) => {
     const r = markers[i]!.marker.getElement().getBoundingClientRect()
@@ -293,6 +297,11 @@ function declutterMarkers() {
     <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
       <span>{{ errorMessage }}</span>
       <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+    </div>
+
+    <div v-if="noTshirtMatches" class="map-empty" role="status">
+      <span class="map-empty__emoji" aria-hidden="true">🧥</span>
+      Sorry, no T-shirt weather here.
     </div>
   </div>
 </template>
@@ -328,6 +337,33 @@ function declutterMarkers() {
 
 .map-status--error {
   background: rgba(150, 30, 30, 0.9);
+}
+
+/* Empty state when the t-shirt filter matches nothing in view. */
+.map-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(20, 24, 30, 0.85);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.map-empty__emoji {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .map-status__spinner {
@@ -460,15 +496,13 @@ function declutterMarkers() {
   border-left: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* T-shirt-weather mode: ring the warm-and-dry day cells, fade cities with none. */
+/* T-shirt-weather mode: ring the warm-and-dry day cells, hide cities with none. */
 .city-marker__day--tshirt {
   box-shadow: inset 0 0 0 2px #10b981;
 }
 
-.city-marker--faded {
-  opacity: 0.3;
-  filter: grayscale(0.5);
-  z-index: 0;
+.city-marker--hidden {
+  display: none;
 }
 
 .city-marker__wday {
