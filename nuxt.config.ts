@@ -10,22 +10,29 @@
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
 
-const upstashMount = redisUrl && redisToken
-  ? { driver: 'upstash', url: redisUrl, token: redisToken }
-  : undefined
+const upstashMount =
+  redisUrl && redisToken ? { driver: 'upstash', url: redisUrl, token: redisToken } : undefined
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@nuxt/eslint'],
+  modules: ['@nuxt/eslint', '@vercel/analytics'],
 
   app: {
     head: {
       title: 'T-Shirt Weather',
       meta: [
-        { name: 'description', content: 'T-Shirt Weather — see where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.' },
+        {
+          name: 'description',
+          content:
+            'T-Shirt Weather — see where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.',
+        },
         { property: 'og:title', content: 'T-Shirt Weather' },
-        { property: 'og:description', content: 'See where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.' },
+        {
+          property: 'og:description',
+          content:
+            'See where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.',
+        },
         { property: 'og:type', content: 'website' },
       ],
       link: [
@@ -49,8 +56,6 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    storage: upstashMount
-      ? { 'forecast-cache': upstashMount, ratelimit: upstashMount }
-      : {},
+    storage: upstashMount ? { 'forecast-cache': upstashMount, ratelimit: upstashMount } : {},
   },
 })
