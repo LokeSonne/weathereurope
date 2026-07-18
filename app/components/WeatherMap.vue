@@ -53,8 +53,12 @@ const container = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 
-/** Minimum screen-space gap (px) enforced between visible markers. */
-const MARKER_GAP = 4
+/**
+ * Overlap tolerance (px) between full chips. Negative means chips may overlap by up to this
+ * many pixels before the lower-priority one collapses to a dot — so chips reveal sooner while
+ * zooming, with the dot fallback covering genuinely dense areas.
+ */
+const MARKER_GAP = -10
 
 let map: MapLibreMap | undefined
 let abortController: AbortController | undefined
@@ -203,7 +207,8 @@ function renderRange() {
       if (tshirt) anyTshirt = true
 
       const cell = document.createElement('div')
-      cell.className = props.tshirt && tshirt ? 'city-marker__day city-marker__day--tshirt' : 'city-marker__day'
+      cell.className =
+        props.tshirt && tshirt ? 'city-marker__day city-marker__day--tshirt' : 'city-marker__day'
       cell.style.backgroundColor = tempColor(t)
       cell.style.color = contrastText(t)
 
@@ -223,7 +228,9 @@ function renderRange() {
       m.pill.append(cell)
 
       titleParts.push(`${shortDayLabel(day)} ${t}° ${label}`)
-      labelParts.push(`${longDayLabel(day)}, ${t} degrees Celsius, ${label}${tshirt ? ', t-shirt weather' : ''}`)
+      labelParts.push(
+        `${longDayLabel(day)}, ${t} degrees Celsius, ${label}${tshirt ? ', t-shirt weather' : ''}`,
+      )
     }
 
     // The collapsed dot is tinted by the range's first day, so the minimal view still
@@ -259,7 +266,8 @@ function declutterMarkers() {
   // Placement order = priority. In t-shirt mode, warm-and-dry cities go first (stable
   // sort preserves importance within each group) so they aren't collapsed behind faded ones.
   const order = markers.map((_, i) => i)
-  if (props.tshirt) order.sort((a, b) => Number(markers[b]!.tshirtOk) - Number(markers[a]!.tshirtOk))
+  if (props.tshirt)
+    order.sort((a, b) => Number(markers[b]!.tshirtOk) - Number(markers[a]!.tshirtOk))
 
   const boxes: Box[] = order.map((i) => {
     const r = markers[i]!.marker.getElement().getBoundingClientRect()
