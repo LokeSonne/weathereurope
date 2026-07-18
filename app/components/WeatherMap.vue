@@ -475,14 +475,16 @@ function declutterMarkers() {
 }
 
 .city-marker__name {
-  margin-top: 2px;
+  margin-top: 3px;
+  padding: 1px 5px;
   font-size: 11px;
   font-weight: 600;
-  color: #1a1f26;
+  line-height: 1.35;
+  color: #14181e;
   white-space: nowrap;
-  text-shadow:
-    0 0 3px rgba(255, 255, 255, 0.9),
-    0 0 3px rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   pointer-events: none;
 }
 
