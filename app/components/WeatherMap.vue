@@ -38,6 +38,8 @@ interface CityFeatureCollection {
 interface CityMarker {
   marker: Marker
   pill: HTMLElement
+  /** Minimal fallback shown (instead of the full chip) when decluttered. */
+  dot: HTMLElement
   data: CityFeature['properties']
   /** Whether any day in the current range is t-shirt weather (drives highlight + declutter priority). */
   tshirtOk: boolean
@@ -50,7 +52,6 @@ const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 const container = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
-const hiddenCount = ref(0)
 
 /** Minimum screen-space gap (px) enforced between visible markers. */
 const MARKER_GAP = 4
@@ -152,6 +153,11 @@ async function renderMarkers(features: CityFeature[]) {
     el.setAttribute('role', 'img')
     el.setAttribute('tabindex', '0')
 
+    // Minimal fallback: a small dot shown in place of the chip when decluttered.
+    const dot = document.createElement('div')
+    dot.className = 'city-marker__dot'
+    dot.setAttribute('aria-hidden', 'true')
+
     const pill = document.createElement('div')
     pill.className = 'city-marker__pill'
     pill.setAttribute('aria-hidden', 'true')
@@ -161,13 +167,13 @@ async function renderMarkers(features: CityFeature[]) {
     name.setAttribute('aria-hidden', 'true')
     name.textContent = (properties.capital ? '★ ' : '') + properties.name
 
-    el.append(pill, name)
+    el.append(dot, pill, name)
 
     const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
       .setLngLat(feature.geometry.coordinates)
       .addTo(map)
 
-    markers.push({ marker, pill, data: properties, tshirtOk: false })
+    markers.push({ marker, pill, dot, data: properties, tshirtOk: false })
   }
 
   renderRange()
@@ -220,6 +226,11 @@ function renderRange() {
       labelParts.push(`${longDayLabel(day)}, ${t} degrees Celsius, ${label}${tshirt ? ', t-shirt weather' : ''}`)
     }
 
+    // The collapsed dot is tinted by the range's first day, so the minimal view still
+    // reads as a temperature at a glance.
+    const dotTemp = m.data.temps[lo]
+    if (dotTemp !== undefined) m.dot.style.backgroundColor = tempColor(dotTemp)
+
     const place = `${m.data.name}, ${countryName(m.data.country)}${m.data.capital ? ' (capital)' : ''}`
     const el = m.marker.getElement()
     el.title = `${place}\n${titleParts.join('\n')}`
@@ -234,18 +245,19 @@ function renderRange() {
 }
 
 /**
- * Hides markers that would overlap higher-priority ones. `markers` is in server
+ * Collapses markers that would overlap higher-priority ones into a minimal dot (rather
+ * than hiding them), so every city stays visible and interactive. `markers` is in server
  * importance order (capitals first, then population), so ties resolve to the more
- * significant city. In t-shirt mode, qualifying cities are promoted so they win
- * collisions against faded ones. Runs after every (re)render — wider ranges make chips
- * bigger, so more get suppressed. Hidden markers reappear on zoom-in as they stop colliding.
+ * significant city. In t-shirt mode, qualifying cities are promoted so they win collisions
+ * against faded ones. Runs after every (re)render — wider ranges make chips bigger, so more
+ * collapse. Collapsed chips expand back on zoom-in as they stop colliding.
  */
 function declutterMarkers() {
-  // Show all first so every marker is measurable at its true size.
-  for (const m of markers) m.marker.getElement().style.display = ''
+  // Restore all full chips first so every marker is measured at its true size.
+  for (const m of markers) m.marker.getElement().classList.remove('city-marker--min')
 
   // Placement order = priority. In t-shirt mode, warm-and-dry cities go first (stable
-  // sort preserves importance within each group) so they aren't hidden behind faded ones.
+  // sort preserves importance within each group) so they aren't collapsed behind faded ones.
   const order = markers.map((_, i) => i)
   if (props.tshirt) order.sort((a, b) => Number(markers[b]!.tshirtOk) - Number(markers[a]!.tshirtOk))
 
@@ -255,14 +267,9 @@ function declutterMarkers() {
   })
 
   const visible = declutter(boxes, MARKER_GAP)
-  let hidden = 0
   for (let k = 0; k < order.length; k++) {
-    if (!visible[k]) {
-      markers[order[k]!]!.marker.getElement().style.display = 'none'
-      hidden++
-    }
+    if (!visible[k]) markers[order[k]!]!.marker.getElement().classList.add('city-marker--min')
   }
-  hiddenCount.value = hidden
 }
 </script>
 
@@ -278,10 +285,6 @@ function declutterMarkers() {
     <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
       <span>{{ errorMessage }}</span>
       <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
-    </div>
-
-    <div v-if="hiddenCount > 0" class="map-hint" role="status">
-      +{{ hiddenCount }} more — zoom in
     </div>
   </div>
 </template>
@@ -317,23 +320,6 @@ function declutterMarkers() {
 
 .map-status--error {
   background: rgba(150, 30, 30, 0.9);
-}
-
-.map-hint {
-  position: absolute;
-  bottom: 44px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-  background: rgba(20, 24, 30, 0.8);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
 }
 
 .map-status__spinner {
@@ -387,6 +373,36 @@ function declutterMarkers() {
   outline-offset: 2px;
   border-radius: 10px;
   z-index: 3;
+}
+
+/* Minimal (decluttered) state: hide the chip, show a small dot instead. */
+.city-marker__dot {
+  display: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9ca3af;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.city-marker--capital .city-marker__dot {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+}
+
+.city-marker--min {
+  z-index: 0;
+}
+
+.city-marker--min .city-marker__pill,
+.city-marker--min .city-marker__name {
+  display: none;
+}
+
+.city-marker--min .city-marker__dot {
+  display: block;
 }
 
 .city-marker__pill {
