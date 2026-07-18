@@ -75,6 +75,9 @@ function isEndpoint(day: number): boolean {
 
 <style scoped>
 .day-range {
+  width: 100%;
+  max-width: 384px;
+  box-sizing: border-box;
   background: rgba(17, 20, 26, 0.82);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -89,15 +92,24 @@ function isEndpoint(day: number): boolean {
 }
 
 .day-range__day {
-  min-width: 46px;
+  /* Equal-width segments that shrink to fit narrow screens. */
+  flex: 1 1 0;
+  min-width: 0;
   border: none;
   background: transparent;
   color: rgba(255, 255, 255, 0.68);
   font-size: 13px;
   font-weight: 500;
-  padding: 7px 8px;
+  padding: 7px 6px;
   cursor: pointer;
   transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+@media (max-width: 360px) {
+  .day-range__day {
+    font-size: 12px;
+    padding: 7px 3px;
+  }
 }
 
 /* Hover only affects days that aren't part of the selection. */

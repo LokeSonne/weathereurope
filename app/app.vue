@@ -46,9 +46,12 @@ body,
 }
 
 .overlay--top {
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  /* Clear the status bar / camera cut-out, and keep a small gap from the screen edges. */
+  top: calc(12px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -57,8 +60,8 @@ body,
 
 .attribution {
   position: absolute;
-  bottom: 4px;
-  right: 8px;
+  bottom: calc(4px + env(safe-area-inset-bottom));
+  right: calc(8px + env(safe-area-inset-right));
   z-index: 10;
   font-size: 10px;
   color: rgba(0, 0, 0, 0.6);

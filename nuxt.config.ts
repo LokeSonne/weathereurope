@@ -22,6 +22,9 @@ export default defineNuxtConfig({
     head: {
       title: 'T-Shirt Weather',
       meta: [
+        // viewport-fit=cover lets the map fill the screen edge-to-edge and enables the
+        // env(safe-area-inset-*) values the overlays use to dodge the notch / rounded corners.
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         {
           name: 'description',
           content:

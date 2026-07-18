@@ -362,6 +362,23 @@ function declutterMarkers() {
 </style>
 
 <style>
+/* Keep MapLibre's own controls clear of the notch / rounded corners under viewport-fit=cover.
+   These elements are added at runtime, so the rules must be global (not scoped). */
+.maplibregl-ctrl-top-right {
+  margin-top: env(safe-area-inset-top);
+  margin-right: env(safe-area-inset-right);
+}
+
+.maplibregl-ctrl-bottom-right {
+  margin-bottom: env(safe-area-inset-bottom);
+  margin-right: env(safe-area-inset-right);
+}
+
+.maplibregl-ctrl-bottom-left {
+  margin-bottom: env(safe-area-inset-bottom);
+  margin-left: env(safe-area-inset-left);
+}
+
 /* Markers are created outside the component tree, so these rules are global (not scoped). */
 .city-marker {
   position: relative;
