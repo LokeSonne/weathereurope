@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Regenerates server/data/cities.json from the GeoNames "cities15000" dump
-// (cities with population > 15,000), filtered to Europe.
+// Regenerates server/data/cities.json from the GeoNames "cities5000" dump
+// (cities with population > 5,000), filtered to Europe.
 //
 //   node scripts/build-cities.mjs        # download + build
 //
@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = join(__dirname, '..', 'server', 'data', 'cities.json')
-const SOURCE_URL = 'https://download.geonames.org/export/dump/cities15000.zip'
+const SOURCE_URL = 'https://download.geonames.org/export/dump/cities5000.zip'
 
 // European country codes (ISO2). RU/TR/UA are kept; the bounding box clips them to
 // their European parts.
@@ -31,13 +31,13 @@ const BBOX = { minLng: -25, minLat: 34, maxLng: 45, maxLat: 72 }
 
 function loadRawLines() {
   const dir = mkdtempSync(join(tmpdir(), 'geonames-'))
-  const zip = join(dir, 'cities15000.zip')
-  const txt = join(dir, 'cities15000.txt')
+  const zip = join(dir, 'cities5000.zip')
+  const txt = join(dir, 'cities5000.txt')
 
   console.log(`Downloading ${SOURCE_URL} …`)
   execSync(`curl -sSL -o "${zip}" "${SOURCE_URL}"`, { stdio: 'inherit' })
   execSync(`unzip -o "${zip}" -d "${dir}"`, { stdio: 'ignore' })
-  if (!existsSync(txt)) throw new Error('cities15000.txt not found after unzip')
+  if (!existsSync(txt)) throw new Error('cities5000.txt not found after unzip')
   return readFileSync(txt, 'utf8').split('\n')
 }
 

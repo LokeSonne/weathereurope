@@ -29,7 +29,7 @@ pnpm typecheck
 ### Regenerating the city data
 
 ```bash
-pnpm build:cities   # re-downloads GeoNames cities15000 and rewrites server/data/cities.json
+pnpm build:cities   # re-downloads GeoNames cities5000 and rewrites server/data/cities.json
 ```
 
 Requires `curl` and `unzip` on PATH. GeoNames data is CC BY 4.0 and is attributed in the UI.
