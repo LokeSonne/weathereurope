@@ -5,6 +5,7 @@ import { parseShareQuery } from './utils/shareView'
 const shared = parseShareQuery(useRoute().query)
 const range = ref(shared.range ?? { from: 0, to: 2 })
 const tshirt = ref(shared.tshirt ?? false)
+const favoritesOnly = ref(false)
 const initialView = shared.view
 
 const TITLE = 'T-Shirt Weather'
@@ -80,12 +81,20 @@ useHead({
     </header>
 
     <ClientOnly>
-      <WeatherMap :range="range" :tshirt="tshirt" :initial-view="initialView" />
+      <WeatherMap
+        :range="range"
+        :tshirt="tshirt"
+        :favorites-only="favoritesOnly"
+        :initial-view="initialView"
+      />
     </ClientOnly>
 
     <div class="overlay overlay--top">
       <DayRange v-model="range" />
-      <TshirtToggle v-model="tshirt" />
+      <div class="overlay__toggles">
+        <MapToggle v-model="tshirt" icon="👕" label="T-shirt weather" active-color="#10b981" />
+        <MapToggle v-model="favoritesOnly" icon="❤️" label="Favorites" active-color="#e0245e" />
+      </div>
     </div>
 
     <div class="attribution">
@@ -149,6 +158,13 @@ body,
 
 .overlay--top > * {
   pointer-events: auto;
+}
+
+.overlay__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 .attribution {

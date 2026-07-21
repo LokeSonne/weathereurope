@@ -6,6 +6,7 @@ import { shortDayLabel, longDayLabel } from '../utils/days'
 import { declutter, type Box } from '../utils/declutter'
 import { isTshirtWeather } from '../utils/tshirt'
 import { buildShareQuery, type MapView } from '../utils/shareView'
+import { cityId } from '../utils/favorites'
 
 // Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
 // and screen-reader labels. Falls back to the raw code if the API is unavailable.
@@ -41,6 +42,9 @@ interface CityMarker {
   pill: HTMLElement
   /** Minimal fallback shown (instead of the full chip) when decluttered. */
   dot: HTMLElement
+  name: HTMLElement
+  /** Stable favorite id, from coordinates. */
+  id: string
   data: CityFeature['properties']
   /** Whether any day in the current range is t-shirt weather (drives the highlight, and
    *  visibility when the t-shirt filter is on). */
@@ -50,17 +54,20 @@ interface CityMarker {
 const props = defineProps<{
   range: { from: number; to: number }
   tshirt: boolean
+  favoritesOnly: boolean
   /** Optional map center/zoom to open at, from a shared URL. */
   initialView?: MapView
 }>()
+
+const { favorites, isFavorite, toggle: toggleFavorite } = useFavorites()
 
 const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 
 const container = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
-// True when the t-shirt filter is on but no city in view has a matching day.
-const noTshirtMatches = ref(false)
+// Set when an active filter leaves nothing visible in the current view.
+const empty = ref<{ icon: string; text: string } | null>(null)
 // 'idle' | 'copied' — transient feedback for the share button.
 const shareState = ref<'idle' | 'copied'>('idle')
 
@@ -106,7 +113,10 @@ onBeforeUnmount(() => {
   map?.remove()
 })
 
-watch(() => [props.range.from, props.range.to, props.tshirt], renderRange)
+watch(
+  () => [props.range.from, props.range.to, props.tshirt, props.favoritesOnly, favorites.value],
+  renderRange,
+)
 
 function scheduleRefresh() {
   clearTimeout(debounceTimer)
@@ -195,13 +205,22 @@ async function renderMarkers(features: CityFeature[]) {
 
   for (const feature of features) {
     const { properties } = feature
+    const [lng, lat] = feature.geometry.coordinates
+    const id = cityId(lng, lat)
 
     const el = document.createElement('div')
     el.className = properties.capital ? 'city-marker city-marker--capital' : 'city-marker'
-    // Expose each marker as a single labelled image; renderRange() fills in the label.
-    // Focusable so keyboard users can reach the forecast the tooltip shows on hover.
-    el.setAttribute('role', 'img')
+    // A button: activating it toggles the city as a favorite. renderRange() fills in the
+    // accessible label (forecast) and aria-pressed (favorite state).
+    el.setAttribute('role', 'button')
     el.setAttribute('tabindex', '0')
+    el.addEventListener('click', () => toggleFavorite(id))
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        toggleFavorite(id)
+      }
+    })
 
     // Minimal fallback: a small dot shown in place of the chip when decluttered.
     const dot = document.createElement('div')
@@ -215,7 +234,6 @@ async function renderMarkers(features: CityFeature[]) {
     const name = document.createElement('div')
     name.className = 'city-marker__name'
     name.setAttribute('aria-hidden', 'true')
-    name.textContent = (properties.capital ? '★ ' : '') + properties.name
 
     el.append(dot, pill, name)
 
@@ -223,7 +241,7 @@ async function renderMarkers(features: CityFeature[]) {
       .setLngLat(feature.geometry.coordinates)
       .addTo(map)
 
-    markers.push({ marker, pill, dot, data: properties, tshirtOk: false })
+    markers.push({ marker, pill, dot, name, id, data: properties, tshirtOk: false })
   }
 
   renderRange()
@@ -284,10 +302,17 @@ function renderRange() {
     const dotTemp = m.data.temps[lo]
     if (dotTemp !== undefined) m.dot.style.backgroundColor = tempColor(dotTemp)
 
+    const fav = isFavorite(m.id)
+    m.name.textContent = (m.data.capital ? '★ ' : '') + m.data.name + (fav ? ' ❤️' : '')
+
     const place = `${m.data.name}, ${countryName(m.data.country)}${m.data.capital ? ' (capital)' : ''}`
     const el = m.marker.getElement()
     el.title = `${place}\n${titleParts.join('\n')}`
-    el.setAttribute('aria-label', `${place}. Forecast: ${labelParts.join('. ')}.`)
+    el.setAttribute(
+      'aria-label',
+      `${place}. Forecast: ${labelParts.join('. ')}.${fav ? ' Favorited.' : ''}`,
+    )
+    el.setAttribute('aria-pressed', String(fav))
     m.tshirtOk = anyTshirt
   }
 
@@ -303,18 +328,20 @@ function renderRange() {
  * ranges make chips bigger, so more collapse. Collapsed chips expand back on zoom-in.
  */
 function declutterMarkers() {
-  // Restore full chips, and hide cities with no matching day when the t-shirt filter is on.
+  // Active filters hide non-matching cities entirely (t-shirt: no warm-dry day; favorites: not saved).
+  const isHidden = (m: CityMarker) =>
+    (props.tshirt && !m.tshirtOk) || (props.favoritesOnly && !isFavorite(m.id))
+
   for (const m of markers) {
     const el = m.marker.getElement()
     el.classList.remove('city-marker--min')
-    el.classList.toggle('city-marker--hidden', props.tshirt && !m.tshirtOk)
+    el.classList.toggle('city-marker--hidden', isHidden(m))
   }
 
   // Lay out only the markers that are still visible (importance order).
-  const order = markers.map((_, i) => i).filter((i) => !(props.tshirt && !markers[i]!.tshirtOk))
+  const order = markers.map((_, i) => i).filter((i) => !isHidden(markers[i]!))
 
-  // Filter is on, cities are in view, but none of them match.
-  noTshirtMatches.value = props.tshirt && markers.length > 0 && order.length === 0
+  updateEmptyState(order.length === 0 && markers.length > 0)
 
   const boxes: Box[] = order.map((i) => {
     const r = markers[i]!.marker.getElement().getBoundingClientRect()
@@ -324,6 +351,21 @@ function declutterMarkers() {
   const visible = declutter(boxes, MARKER_GAP)
   for (let k = 0; k < order.length; k++) {
     if (!visible[k]) markers[order[k]!]!.marker.getElement().classList.add('city-marker--min')
+  }
+}
+
+/** Chooses the empty-state message for whichever filter has hidden everything in view. */
+function updateEmptyState(nothingVisible: boolean) {
+  if (!nothingVisible) {
+    empty.value = null
+  } else if (props.favoritesOnly && favorites.value.size === 0) {
+    empty.value = { icon: '❤️', text: 'No favorites yet — turn off the filter, then tap a city to add one.' }
+  } else if (props.favoritesOnly) {
+    empty.value = { icon: '🔍', text: 'No favorite cities in this area.' }
+  } else if (props.tshirt) {
+    empty.value = { icon: '🧥', text: 'Sorry, no T-shirt weather here.' }
+  } else {
+    empty.value = null
   }
 }
 </script>
@@ -356,9 +398,9 @@ function declutterMarkers() {
       </button>
     </div>
 
-    <div v-if="noTshirtMatches" class="map-empty" role="status">
-      <span class="map-empty__emoji" aria-hidden="true">🧥</span>
-      Sorry, no T-shirt weather here.
+    <div v-if="empty" class="map-empty" role="status">
+      <span class="map-empty__emoji" aria-hidden="true">{{ empty.icon }}</span>
+      {{ empty.text }}
     </div>
   </div>
 </template>
@@ -529,7 +571,7 @@ function declutterMarkers() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: default;
+  cursor: pointer;
   z-index: 1;
 }
 

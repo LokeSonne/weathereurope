@@ -1,22 +1,27 @@
 <script setup lang="ts">
+const props = withDefaults(
+  defineProps<{ icon: string; label: string; activeColor?: string }>(),
+  { activeColor: '#10b981' },
+)
 const active = defineModel<boolean>({ required: true })
 </script>
 
 <template>
   <button
     type="button"
-    class="tshirt-toggle"
-    :class="{ 'tshirt-toggle--active': active }"
+    class="map-toggle"
+    :class="{ 'map-toggle--active': active }"
+    :style="{ '--toggle-active': props.activeColor }"
     :aria-pressed="active"
     @click="active = !active"
   >
-    <span class="tshirt-toggle__icon" aria-hidden="true">👕</span>
-    T-shirt weather
+    <span class="map-toggle__icon" aria-hidden="true">{{ icon }}</span>
+    {{ label }}
   </button>
 </template>
 
 <style scoped>
-.tshirt-toggle {
+.map-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -33,18 +38,18 @@ const active = defineModel<boolean>({ required: true })
   transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 }
 
-.tshirt-toggle:hover {
+.map-toggle:hover {
   color: #fff;
   background: rgba(17, 20, 26, 0.92);
 }
 
-.tshirt-toggle--active {
-  background: #10b981;
-  border-color: #10b981;
+.map-toggle--active {
+  background: var(--toggle-active);
+  border-color: var(--toggle-active);
   color: #fff;
 }
 
-.tshirt-toggle__icon {
+.map-toggle__icon {
   font-size: 15px;
   line-height: 1;
 }
