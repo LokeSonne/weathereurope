@@ -12,9 +12,8 @@ function createMemoryStorage() {
   }
 }
 
-function makeResponse(currentTemp: number, currentCode: number) {
+function makeResponse() {
   return {
-    current: { temperature_2m: currentTemp, weather_code: currentCode },
     daily: {
       temperature_2m_max: Array.from({ length: 8 }, (_, i) => 20 + i),
       temperature_2m_min: Array.from({ length: 8 }, (_, i) => 10 + i),
@@ -44,13 +43,13 @@ afterEach(() => {
 
 describe('resolveForecasts', () => {
   it('fetches on a cache miss, maps the response, and caches with a timestamp', async () => {
-    fetchMock.mockResolvedValue(makeResponse(19.4, 0))
+    fetchMock.mockResolvedValue(makeResponse())
 
     const [forecast] = await resolveForecasts([{ lat: 48.85, lng: 2.35 }])
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(forecast!.temps[0]).toBe(19) // current temp, rounded
-    expect(forecast!.codes[0]).toBe(0)
+    expect(forecast!.temps[0]).toBe(20) // today's daily high (max[0])
+    expect(forecast!.codes[0]).toBe(2) // today's daily code
     expect(forecast!.temps).toHaveLength(8)
     expect(forecast!.temps[1]).toBe(21) // daily max[1]
 
@@ -94,7 +93,7 @@ describe('resolveForecasts', () => {
   })
 
   it('uses the free endpoint with no api key by default', async () => {
-    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    fetchMock.mockResolvedValue(makeResponse())
     await resolveForecasts([{ lat: 1, lng: 2 }])
 
     const calledUrl = fetchMock.mock.calls[0]![0] as string
@@ -104,7 +103,7 @@ describe('resolveForecasts', () => {
 
   it('switches to the commercial customer endpoint and appends the api key when configured', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ openMeteoContact: 'x', openMeteoApiKey: 'secret-key', openMeteoBaseUrl: '' }))
-    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    fetchMock.mockResolvedValue(makeResponse())
     await resolveForecasts([{ lat: 1, lng: 2 }])
 
     const calledUrl = fetchMock.mock.calls[0]![0] as string
@@ -114,7 +113,7 @@ describe('resolveForecasts', () => {
 
   it('uses a self-hosted base URL when configured', async () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ openMeteoContact: 'x', openMeteoApiKey: '', openMeteoBaseUrl: 'https://weather.internal/v1/forecast' }))
-    fetchMock.mockResolvedValue(makeResponse(15, 1))
+    fetchMock.mockResolvedValue(makeResponse())
     await resolveForecasts([{ lat: 1, lng: 2 }])
 
     const calledUrl = fetchMock.mock.calls[0]![0] as string

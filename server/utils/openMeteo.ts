@@ -1,9 +1,9 @@
 export const FORECAST_DAYS = 8
 
 export interface CityForecast {
-  /** Display temperature (°C) per day offset 0..7. Day 0 is the live/current temperature; 1..7 are daily highs. */
+  /** Daily high (°C) per day offset 0..7 (0 = today), so it reads as a forecast for planning. */
   temps: number[]
-  /** WMO weather code per day offset 0..7. Day 0 is the current condition; 1..7 are the daily code. */
+  /** Daily WMO weather code per day offset 0..7 (0 = today). */
   codes: number[]
 }
 
@@ -94,7 +94,6 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
   url.searchParams.set('latitude', latitude)
   url.searchParams.set('longitude', longitude)
   url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,weather_code')
-  url.searchParams.set('current', 'temperature_2m,weather_code')
   url.searchParams.set('forecast_days', String(FORECAST_DAYS))
   url.searchParams.set('timezone', 'auto')
   url.searchParams.set('models', 'metno_seamless')
@@ -110,15 +109,13 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
   const entries = Array.isArray(response) ? response : [response]
 
   return entries.map((entry) => {
-    if (!entry?.daily || !entry.current) return undefined
+    if (!entry?.daily) return undefined
 
     const temps: number[] = new Array(FORECAST_DAYS)
     const codes: number[] = new Array(FORECAST_DAYS)
 
-    // Day 0 shows the live conditions; later days show the daily high + dominant code.
-    temps[0] = Math.round(entry.current.temperature_2m)
-    codes[0] = entry.current.weather_code
-    for (let day = 1; day < FORECAST_DAYS; day++) {
+    // Daily high + dominant code for every day, including today, so it's a forecast.
+    for (let day = 0; day < FORECAST_DAYS; day++) {
       temps[day] = Math.round(entry.daily.temperature_2m_max[day]!)
       codes[day] = entry.daily.weather_code[day]!
     }
@@ -128,10 +125,6 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
 }
 
 interface OpenMeteoResponse {
-  current: {
-    temperature_2m: number
-    weather_code: number
-  }
   daily: {
     temperature_2m_max: number[]
     temperature_2m_min: number[]
