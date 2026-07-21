@@ -1,11 +1,79 @@
 <script setup lang="ts">
 const range = ref({ from: 0, to: 2 })
 const tshirt = ref(false)
+
+const TITLE = 'T-Shirt Weather'
+const DESCRIPTION =
+  'See where in Europe it’s warm enough for a t-shirt — live temperatures and weather ' +
+  'conditions for cities from capitals to towns, over a selectable date range.'
+
+const siteUrl = useRuntimeConfig().public.siteUrl
+const ogImage = `${siteUrl}/og-image.png`
+const imageAlt = 'A weather map of Europe showing city temperatures and conditions'
+
+useSeoMeta({
+  description: DESCRIPTION,
+  ogType: 'website',
+  ogSiteName: TITLE,
+  ogTitle: TITLE,
+  ogDescription: DESCRIPTION,
+  ogUrl: siteUrl,
+  ogLocale: 'en',
+  ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: imageAlt,
+  twitterCard: 'summary_large_image',
+  twitterTitle: TITLE,
+  twitterDescription: DESCRIPTION,
+  twitterImage: ogImage,
+  twitterImageAlt: imageAlt,
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: siteUrl }],
+  // Managed by unhead (not hydrated by Vue), so it avoids the <noscript> hydration pitfall.
+  noscript: [
+    {
+      tagPosition: 'bodyOpen',
+      innerHTML:
+        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.5 system-ui,sans-serif;color:#1a1f26;background:#eaf4fb">T-Shirt Weather is an interactive weather map of Europe. Please enable JavaScript to view live temperatures and conditions across the continent.</div>',
+    },
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: TITLE,
+        url: siteUrl,
+        description: DESCRIPTION,
+        applicationCategory: 'Weather',
+        operatingSystem: 'Any',
+        browserRequirements: 'Requires JavaScript',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+      }),
+    },
+  ],
+})
 </script>
 
 <template>
   <div class="page">
     <NuxtRouteAnnouncer />
+
+    <!-- Crawlable, screen-reader-friendly heading + intro for an otherwise map-only page. -->
+    <header class="visually-hidden">
+      <h1>T-Shirt Weather — live weather map of Europe</h1>
+      <p>
+        An interactive map showing current temperatures and weather conditions for European
+        cities, from capital cities down to small towns. Pick a date range up to a week ahead,
+        and toggle “t-shirt weather” to highlight where it’s warm and dry enough for just a tee.
+        Weather data from Open-Meteo (MET Norway model); city data from GeoNames.
+      </p>
+    </header>
+
     <ClientOnly>
       <WeatherMap :range="range" :tshirt="tshirt" />
     </ClientOnly>
@@ -39,6 +107,20 @@ body,
   width: 100vw;
   font-family: system-ui, sans-serif;
 }
+
+/* Present for crawlers and screen readers, but off-screen visually. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 
 .overlay {
   position: absolute;

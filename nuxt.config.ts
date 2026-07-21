@@ -20,23 +20,15 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      htmlAttrs: { lang: 'en' },
       title: 'T-Shirt Weather',
       meta: [
         // viewport-fit=cover lets the map fill the screen edge-to-edge and enables the
         // env(safe-area-inset-*) values the overlays use to dodge the notch / rounded corners.
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-        {
-          name: 'description',
-          content:
-            'T-Shirt Weather — see where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.',
-        },
-        { property: 'og:title', content: 'T-Shirt Weather' },
-        {
-          property: 'og:description',
-          content:
-            'See where in Europe it’s warm enough for a t-shirt: live temperatures and conditions, from capitals to towns.',
-        },
-        { property: 'og:type', content: 'website' },
+        { name: 'theme-color', content: '#4aa6ea' },
+        // Description, Open Graph, Twitter and canonical are set in app.vue via useSeoMeta,
+        // where the runtime siteUrl is available for absolute URLs.
       ],
       link: [
         // SVG for modern browsers, .ico fallback, PNG for iOS home-screen.
@@ -56,6 +48,15 @@ export default defineNuxtConfig({
     // point at a self-hosted Open-Meteo instance. Empty → free non-commercial API.
     openMeteoApiKey: '',
     openMeteoBaseUrl: '',
+    public: {
+      // Canonical origin for SEO (canonical link, og:url, og:image, sitemap). Auto-detected
+      // on Vercel; override with NUXT_PUBLIC_SITE_URL for a custom domain.
+      siteUrl:
+        process.env.NUXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL
+          ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+          : 'http://localhost:3000'),
+    },
   },
 
   nitro: {

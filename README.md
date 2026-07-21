@@ -44,6 +44,7 @@ Nuxt auto-detects Vercel — no `vercel.json` or preset needed. Import the repo 
 | --- | --- | --- |
 | `UPSTASH_REDIS_REST_URL` | Shared cache + rate-limit store (REST) | Recommended in prod |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash auth token | Recommended in prod |
+| `NUXT_PUBLIC_SITE_URL` | Canonical origin for SEO (canonical link, `og:url`, `og:image`, sitemap). Auto-detected on Vercel; set this for a custom domain, e.g. `https://tshirtweather.app` | Custom domain only |
 | `NUXT_OPEN_METEO_CONTACT` | Contact string sent in the Open-Meteo `User-Agent` (use a role address) | Recommended |
 | `NUXT_OPEN_METEO_API_KEY` | Open-Meteo **commercial** API key (auto-switches to the customer endpoint) | See licensing |
 | `NUXT_OPEN_METEO_BASE_URL` | Override the forecast base URL (e.g. a self-hosted instance) | See licensing |
