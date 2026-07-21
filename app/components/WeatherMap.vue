@@ -339,7 +339,9 @@ function declutterMarkers() {
         :aria-label="shareState === 'copied' ? 'Link copied' : 'Share this view'"
         @click="shareView"
       >
-        <span class="map-share__icon" aria-hidden="true">{{ shareState === 'copied' ? '✓' : '🔗' }}</span>
+        <span class="map-share__icon" aria-hidden="true">{{
+          shareState === 'copied' ? '✓' : ''
+        }}</span>
         {{ shareState === 'copied' ? 'Copied!' : 'Share' }}
       </button>
 
@@ -392,7 +394,7 @@ function declutterMarkers() {
 .map-share {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(17, 20, 26, 0.82);
   backdrop-filter: blur(10px);
@@ -403,7 +405,9 @@ function declutterMarkers() {
   padding: 7px 13px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background-color 0.14s ease, color 0.14s ease;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
 }
 
 .map-share:hover {
