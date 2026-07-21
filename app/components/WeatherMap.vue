@@ -332,7 +332,17 @@ function declutterMarkers() {
   <div class="weather-map">
     <div ref="container" class="weather-map__canvas" />
 
-    <div class="map-topleft">
+    <div class="map-actions">
+      <div v-if="loading" class="map-status map-status--loading" role="status">
+        <span class="map-status__spinner" aria-hidden="true" />
+        Updating…
+      </div>
+
+      <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+      </div>
+
       <button
         type="button"
         class="map-share"
@@ -344,16 +354,6 @@ function declutterMarkers() {
         }}</span>
         {{ shareState === 'copied' ? 'Copied!' : 'Share' }}
       </button>
-
-      <div v-if="loading" class="map-status map-status--loading" role="status">
-        <span class="map-status__spinner" aria-hidden="true" />
-        Updating…
-      </div>
-
-      <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
-        <span>{{ errorMessage }}</span>
-        <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
-      </div>
     </div>
 
     <div v-if="noTshirtMatches" class="map-empty" role="status">
@@ -374,10 +374,11 @@ function declutterMarkers() {
   inset: 0;
 }
 
-/* Top-left stack: Share button + transient status pills, clearing the notch/edges. */
-.map-topleft {
+/* Bottom-left stack (clear of the full-width day selector on mobile): the Share button
+   anchors at the corner and transient status pills stack above it. */
+.map-actions {
   position: absolute;
-  top: calc(12px + env(safe-area-inset-top));
+  bottom: calc(30px + env(safe-area-inset-bottom));
   left: max(12px, env(safe-area-inset-left));
   z-index: 10;
   display: flex;
@@ -387,7 +388,15 @@ function declutterMarkers() {
   pointer-events: none;
 }
 
-.map-topleft > * {
+/* On narrow screens the map attribution wraps into a full-width band along the bottom;
+   lift the stack above it. */
+@media (max-width: 700px) {
+  .map-actions {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+
+.map-actions > * {
   pointer-events: auto;
 }
 
