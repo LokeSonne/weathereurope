@@ -1,6 +1,11 @@
 <script setup lang="ts">
-const range = ref({ from: 0, to: 2 })
-const tshirt = ref(false)
+import { parseShareQuery } from './utils/shareView'
+
+// Restore a shared view from the URL (?lat&lng&z&from&to&tshirt); fall back to defaults.
+const shared = parseShareQuery(useRoute().query)
+const range = ref(shared.range ?? { from: 0, to: 2 })
+const tshirt = ref(shared.tshirt ?? false)
+const initialView = shared.view
 
 const TITLE = 'T-Shirt Weather'
 const DESCRIPTION =
@@ -75,7 +80,7 @@ useHead({
     </header>
 
     <ClientOnly>
-      <WeatherMap :range="range" :tshirt="tshirt" />
+      <WeatherMap :range="range" :tshirt="tshirt" :initial-view="initialView" />
     </ClientOnly>
 
     <div class="overlay overlay--top">
@@ -138,6 +143,12 @@ body,
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  /* The full-width band must not swallow map drags / clicks in its empty areas. */
+  pointer-events: none;
+}
+
+.overlay--top > * {
+  pointer-events: auto;
 }
 
 .attribution {

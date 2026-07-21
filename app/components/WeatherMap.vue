@@ -5,6 +5,7 @@ import { weatherIcon } from '../utils/weatherIcon'
 import { shortDayLabel, longDayLabel } from '../utils/days'
 import { declutter, type Box } from '../utils/declutter'
 import { isTshirtWeather } from '../utils/tshirt'
+import { buildShareQuery, type MapView } from '../utils/shareView'
 
 // Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
 // and screen-reader labels. Falls back to the raw code if the API is unavailable.
@@ -46,7 +47,12 @@ interface CityMarker {
   tshirtOk: boolean
 }
 
-const props = defineProps<{ range: { from: number; to: number }; tshirt: boolean }>()
+const props = defineProps<{
+  range: { from: number; to: number }
+  tshirt: boolean
+  /** Optional map center/zoom to open at, from a shared URL. */
+  initialView?: MapView
+}>()
 
 const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
 
@@ -55,6 +61,8 @@ const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 // True when the t-shirt filter is on but no city in view has a matching day.
 const noTshirtMatches = ref(false)
+// 'idle' | 'copied' — transient feedback for the share button.
+const shareState = ref<'idle' | 'copied'>('idle')
 
 /**
  * Overlap tolerance (px) between full chips. Negative means chips may overlap by up to this
@@ -77,8 +85,8 @@ onMounted(async () => {
   map = new maplibregl.Map({
     container: container.value,
     style: 'https://tiles.openfreemap.org/styles/liberty',
-    center: [10, 50],
-    zoom: 3.5,
+    center: props.initialView ? [props.initialView.lng, props.initialView.lat] : [10, 50],
+    zoom: props.initialView?.zoom ?? 3.5,
     minZoom: 2,
     maxZoom: 12,
     maxBounds: EUROPE_BOUNDS,
@@ -92,6 +100,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
+  clearTimeout(shareResetTimer)
   abortController?.abort()
   clearMarkers()
   map?.remove()
@@ -102,6 +111,40 @@ watch(() => [props.range.from, props.range.to, props.tshirt], renderRange)
 function scheduleRefresh() {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => void refreshCities(), 400)
+}
+
+let shareResetTimer: ReturnType<typeof setTimeout> | undefined
+
+/** Builds a link to the current view and shares it (native sheet) or copies it. */
+async function shareView() {
+  if (!map) return
+  const c = map.getCenter()
+  const query = buildShareQuery({
+    view: { lng: c.lng, lat: c.lat, zoom: map.getZoom() },
+    from: props.range.from,
+    to: props.range.to,
+    tshirt: props.tshirt,
+  })
+  const url = `${location.origin}${location.pathname}?${query}`
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'T-Shirt Weather', text: 'Weather across Europe', url })
+      return
+    }
+  } catch {
+    // User dismissed the share sheet — nothing to do.
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(url)
+    shareState.value = 'copied'
+    clearTimeout(shareResetTimer)
+    shareResetTimer = setTimeout(() => (shareState.value = 'idle'), 2000)
+  } catch {
+    console.error('Could not copy share link')
+  }
 }
 
 function clearMarkers() {
@@ -289,14 +332,26 @@ function declutterMarkers() {
   <div class="weather-map">
     <div ref="container" class="weather-map__canvas" />
 
-    <div v-if="loading" class="map-status map-status--loading" role="status">
-      <span class="map-status__spinner" aria-hidden="true" />
-      Updating…
-    </div>
+    <div class="map-topleft">
+      <button
+        type="button"
+        class="map-share"
+        :aria-label="shareState === 'copied' ? 'Link copied' : 'Share this view'"
+        @click="shareView"
+      >
+        <span class="map-share__icon" aria-hidden="true">{{ shareState === 'copied' ? '✓' : '🔗' }}</span>
+        {{ shareState === 'copied' ? 'Copied!' : 'Share' }}
+      </button>
 
-    <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
-      <span>{{ errorMessage }}</span>
-      <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+      <div v-if="loading" class="map-status map-status--loading" role="status">
+        <span class="map-status__spinner" aria-hidden="true" />
+        Updating…
+      </div>
+
+      <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+      </div>
     </div>
 
     <div v-if="noTshirtMatches" class="map-empty" role="status">
@@ -317,11 +372,51 @@ function declutterMarkers() {
   inset: 0;
 }
 
-.map-status {
+/* Top-left stack: Share button + transient status pills, clearing the notch/edges. */
+.map-topleft {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.map-topleft > * {
+  pointer-events: auto;
+}
+
+.map-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 20, 26, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.map-share:hover {
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+}
+
+.map-share__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.map-status {
   display: flex;
   align-items: center;
   gap: 8px;
