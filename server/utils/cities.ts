@@ -14,6 +14,23 @@ export interface City {
 // Pre-sorted (capitals first, then population desc) at build time — see scripts that generate cities.json.
 const CITIES = citiesData as City[]
 
+// Lookup by favorite id ("lng,lat"), matching the client's cityId(). Lets the favorites
+// endpoint resolve saved ids back to cities regardless of the zoom tier.
+const CITY_BY_ID = new Map<string, City>(CITIES.map((c) => [`${c.lng},${c.lat}`, c]))
+
+/** Hard cap on favorite ids honored per request (bounds the Open-Meteo fan-out). */
+const MAX_FAVORITES = 200
+
+/** Resolves favorite ids to their cities, skipping unknown/stale ids and capping the count. */
+export function citiesByIds(ids: string[]): City[] {
+  const out: City[] = []
+  for (const id of ids.slice(0, MAX_FAVORITES)) {
+    const city = CITY_BY_ID.get(id)
+    if (city) out.push(city)
+  }
+  return out
+}
+
 export interface BBox {
   minLng: number
   minLat: number

@@ -101,7 +101,7 @@ onMounted(async () => {
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
-  map.on('load', () => void refreshCities())
+  map.on('load', () => void refreshData())
   map.on('moveend', () => scheduleRefresh())
 })
 
@@ -113,14 +113,22 @@ onBeforeUnmount(() => {
   map?.remove()
 })
 
-watch(
-  () => [props.range.from, props.range.to, props.tshirt, props.favoritesOnly, favorites.value],
-  renderRange,
-)
+// Range + t-shirt only change client-side rendering — all days are already fetched.
+watch(() => [props.range.from, props.range.to, props.tshirt], renderRange)
+
+// Turning the favorites filter on/off switches the data source.
+watch(() => props.favoritesOnly, () => void refreshData())
+
+// Favorites changed: refetch if we're filtering (the in-view set changed), otherwise just
+// refresh the ❤️ indicators on the current markers.
+watch(favorites, () => {
+  if (props.favoritesOnly) void refreshData()
+  else renderRange()
+})
 
 function scheduleRefresh() {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => void refreshCities(), 400)
+  debounceTimer = setTimeout(() => void refreshData(), 400)
 }
 
 let shareResetTimer: ReturnType<typeof setTimeout> | undefined
@@ -162,7 +170,24 @@ function clearMarkers() {
   markers = []
 }
 
-async function refreshCities() {
+/** Favorite ids whose coordinates fall within the current map bounds. */
+function inViewFavorites(bounds: ReturnType<NonNullable<typeof map>['getBounds']>): string[] {
+  const ids: string[] = []
+  for (const id of favorites.value) {
+    const comma = id.indexOf(',')
+    const lng = Number(id.slice(0, comma))
+    const lat = Number(id.slice(comma + 1))
+    if (
+      lng >= bounds.getWest() && lng <= bounds.getEast() &&
+      lat >= bounds.getSouth() && lat <= bounds.getNorth()
+    ) {
+      ids.push(id)
+    }
+  }
+  return ids
+}
+
+async function refreshData() {
   if (!map) return
   const bounds = map.getBounds()
   abortController?.abort()
@@ -173,21 +198,34 @@ async function refreshCities() {
   errorMessage.value = null
 
   try {
-    const data = await $fetch<CityFeatureCollection>('/api/city-forecast', {
-      query: {
-        minLng: bounds.getWest(),
-        minLat: bounds.getSouth(),
-        maxLng: bounds.getEast(),
-        maxLat: bounds.getNorth(),
-        zoom: map.getZoom(),
-      },
-      signal: controller.signal,
-    })
+    let data: CityFeatureCollection
+    if (props.favoritesOnly) {
+      // Personalized + zoom-independent: fetch the in-view favorites directly (not cached).
+      const ids = inViewFavorites(bounds)
+      data = ids.length
+        ? await $fetch<CityFeatureCollection>('/api/favorites-forecast', {
+            method: 'POST',
+            body: { ids },
+            signal: controller.signal,
+          })
+        : { type: 'FeatureCollection', features: [] }
+    } else {
+      data = await $fetch<CityFeatureCollection>('/api/city-forecast', {
+        query: {
+          minLng: bounds.getWest(),
+          minLat: bounds.getSouth(),
+          maxLng: bounds.getEast(),
+          maxLat: bounds.getNorth(),
+          zoom: map.getZoom(),
+        },
+        signal: controller.signal,
+      })
+    }
     renderMarkers(data.features)
   } catch (error) {
     // A newer request superseded this one — ignore its outcome entirely.
     if ((error as { name?: string }).name === 'AbortError') return
-    console.error('Failed to load city forecasts', error)
+    console.error('Failed to load forecasts', error)
     errorMessage.value =
       (error as { statusCode?: number }).statusCode === 429
         ? 'Too many requests — pausing updates for a moment.'
@@ -328,9 +366,9 @@ function renderRange() {
  * ranges make chips bigger, so more collapse. Collapsed chips expand back on zoom-in.
  */
 function declutterMarkers() {
-  // Active filters hide non-matching cities entirely (t-shirt: no warm-dry day; favorites: not saved).
-  const isHidden = (m: CityMarker) =>
-    (props.tshirt && !m.tshirtOk) || (props.favoritesOnly && !isFavorite(m.id))
+  // The favorites filter controls *which cities are fetched*, so the only thing that hides a
+  // fetched marker is the t-shirt filter (no warm-and-dry day in range). t-shirt wins.
+  const isHidden = (m: CityMarker) => props.tshirt && !m.tshirtOk
 
   for (const m of markers) {
     const el = m.marker.getElement()
@@ -341,7 +379,7 @@ function declutterMarkers() {
   // Lay out only the markers that are still visible (importance order).
   const order = markers.map((_, i) => i).filter((i) => !isHidden(markers[i]!))
 
-  updateEmptyState(order.length === 0 && markers.length > 0)
+  updateEmptyState(order.length)
 
   const boxes: Box[] = order.map((i) => {
     const r = markers[i]!.marker.getElement().getBoundingClientRect()
@@ -354,15 +392,31 @@ function declutterMarkers() {
   }
 }
 
-/** Chooses the empty-state message for whichever filter has hidden everything in view. */
-function updateEmptyState(nothingVisible: boolean) {
-  if (!nothingVisible) {
+/** Chooses the empty-state message when an active filter leaves nothing visible. */
+function updateEmptyState(visibleCount: number) {
+  const total = markers.length
+  if (visibleCount > 0) {
     empty.value = null
-  } else if (props.favoritesOnly && favorites.value.size === 0) {
-    empty.value = { icon: '❤️', text: 'No favorites yet — turn off the filter, then tap a city to add one.' }
-  } else if (props.favoritesOnly) {
-    empty.value = { icon: '🔍', text: 'No favorite cities in this area.' }
-  } else if (props.tshirt) {
+    return
+  }
+
+  if (props.favoritesOnly) {
+    if (total === 0) {
+      // Nothing was even fetched — no favorites in this area (or none at all yet).
+      empty.value =
+        favorites.value.size === 0
+          ? { icon: '❤️', text: 'No favorites yet — turn off the filter, then tap a city to add one.' }
+          : { icon: '🔍', text: 'No favorite cities in this area.' }
+    } else if (props.tshirt) {
+      // Favorites are here, but the t-shirt filter hid them all.
+      empty.value = {
+        icon: '🧥',
+        text: `Sorry, no T-shirt weather here (${total} favorite${total === 1 ? '' : 's'} hidden).`,
+      }
+    } else {
+      empty.value = null
+    }
+  } else if (props.tshirt && total > 0) {
     empty.value = { icon: '🧥', text: 'Sorry, no T-shirt weather here.' }
   } else {
     empty.value = null
@@ -382,7 +436,7 @@ function updateEmptyState(nothingVisible: boolean) {
 
       <div v-else-if="errorMessage" class="map-status map-status--error" role="alert">
         <span>{{ errorMessage }}</span>
-        <button type="button" class="map-status__retry" @click="refreshCities">Retry</button>
+        <button type="button" class="map-status__retry" @click="refreshData">Retry</button>
       </div>
 
       <button

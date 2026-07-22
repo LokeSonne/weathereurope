@@ -1,5 +1,6 @@
 import { resolveForecasts } from '../utils/openMeteo'
 import { selectCities, type BBox } from '../utils/cities'
+import { toForecastFeatures } from '../utils/features'
 import { enforceRateLimit } from '../utils/rateLimit'
 
 export default defineEventHandler(async (event) => {
@@ -22,25 +23,9 @@ export default defineEventHandler(async (event) => {
   const cities = selectCities(bbox, zoom)
   const forecasts = await resolveForecasts(cities.map((c) => ({ lat: c.lat, lng: c.lng })))
 
-  const features = cities.flatMap((city, i) => {
-    const forecast = forecasts[i]
-    if (!forecast) return []
-    return [{
-      type: 'Feature' as const,
-      geometry: { type: 'Point' as const, coordinates: [city.lng, city.lat] },
-      properties: {
-        name: city.name,
-        country: city.country,
-        capital: city.capital,
-        temps: forecast.temps,
-        codes: forecast.codes,
-      },
-    }]
-  })
-
   // Let the CDN (e.g. Vercel's edge) serve identical viewports without re-invoking the
   // function, and keep serving slightly stale data while it revalidates.
   setResponseHeader(event, 'Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600')
 
-  return { type: 'FeatureCollection' as const, features }
+  return { type: 'FeatureCollection' as const, features: toForecastFeatures(cities, forecasts) }
 })
