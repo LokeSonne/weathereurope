@@ -67,7 +67,9 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
   day, tinted by the temperature ramp; a **cream name label with teal ink** below.
 - **Controls** (date range, toggles, share, status) — **deep-teal frosted** shells with cream
   text; the date-range selection and Favorites use the **terracotta** accent, T-shirt weather
-  the muted teal-green.
+  the muted teal-green. The T-shirt and Favorites toggles carry **custom flat ink icons**
+  (`IconTshirt.vue`, `IconHeart.vue`) — filled `currentColor` silhouettes, not emoji — so they
+  read as screen-printed marks that inherit the toggle's cream/white text.
 - **Decluttered dot** — the minimal fallback keeps a cream ring so it still reads as a place.
 
 ## Typography

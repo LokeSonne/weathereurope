@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = withDefaults(
-  defineProps<{ icon: string; label: string; activeColor?: string }>(),
-  { activeColor: '#10b981' },
+  defineProps<{ label: string; icon?: string; activeColor?: string }>(),
+  { icon: '', activeColor: '#10b981' },
 )
 const active = defineModel<boolean>({ required: true })
 </script>
@@ -15,7 +15,10 @@ const active = defineModel<boolean>({ required: true })
     :aria-pressed="active"
     @click="active = !active"
   >
-    <span class="map-toggle__icon" aria-hidden="true">{{ icon }}</span>
+    <span class="map-toggle__icon" aria-hidden="true">
+      <!-- Prefer a custom flat icon passed via the slot; fall back to the string prop. -->
+      <slot name="icon">{{ icon }}</slot>
+    </span>
     {{ label }}
   </button>
 </template>
@@ -50,6 +53,8 @@ const active = defineModel<boolean>({ required: true })
 }
 
 .map-toggle__icon {
+  display: inline-flex;
+  align-items: center;
   font-size: 15px;
   line-height: 1;
 }
