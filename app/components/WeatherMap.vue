@@ -7,6 +7,7 @@ import { declutter, type Box } from '../utils/declutter'
 import { isTshirtWeather } from '../utils/tshirt'
 import { buildShareQuery, type MapView } from '../utils/shareView'
 import { cityId } from '../utils/favorites'
+import { HEART_SVG } from '../utils/heartIcon'
 
 // Turn an ISO country code (e.g. "DE") into a readable name ("Germany") for tooltips
 // and screen-reader labels. Falls back to the raw code if the API is unavailable.
@@ -389,7 +390,19 @@ function renderRange() {
     if (dotTemp !== undefined) m.dot.style.backgroundColor = tempColor(dotTemp)
 
     const fav = isFavorite(m.id)
-    m.name.textContent = (m.data.capital ? '★ ' : '') + m.data.name + (fav ? ' ❤️' : '')
+    // Rebuild the label: capital star + name, then the custom flat heart (flamingo, via CSS)
+    // for favorites — the DESIGN.md ink glyph, not the emoji.
+    m.name.replaceChildren(
+      document.createTextNode((m.data.capital ? '★ ' : '') + m.data.name),
+    )
+    if (fav) {
+      const favEl = document.createElement('span')
+      favEl.className = 'city-marker__fav'
+      favEl.setAttribute('aria-hidden', 'true')
+      // Trusted, static, locally-authored SVG markup (see heartIcon.ts) — no user input.
+      favEl.innerHTML = HEART_SVG
+      m.name.append(favEl)
+    }
 
     const place = `${m.data.name}, ${countryName(m.data.country)}${m.data.capital ? ' (capital)' : ''}`
     const el = m.marker.getElement()
@@ -810,5 +823,19 @@ function updateEmptyState(visibleCount: number) {
 
 .city-marker--capital .city-marker__name {
   color: #12283a;
+}
+
+/* Favorite mark: the flat Deco heart (heartIcon.ts) in flamingo, inline after the city name. */
+.city-marker__fav {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-left: 3px;
+  color: var(--miami-flamingo, #e86a93);
+}
+
+.city-marker__fav svg {
+  display: block;
+  width: 11px;
+  height: 11px;
 }
 </style>
