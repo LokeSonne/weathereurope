@@ -153,7 +153,7 @@ function tintBasemap() {
             'line-color': '#1c3b52', // --miami-navy ink
             'line-opacity': 0.85,
             // Crisp but a removedas you zoom in.
-            'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 6, 0.0, 10, 0.0],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.0, 6, 0.1, 10, 0.1],
           },
         },
         firstLabel,
@@ -161,6 +161,42 @@ function tintBasemap() {
     }
   } catch {
     // Water source-layer absent in this style version — skip the coastline.
+  }
+
+  // Foamy surf edge: a single bold, soft white band tracing the ocean shoreline — the stylized
+  // surf of a Miami travel poster, kept flat and graphic (one band, not a fine multi-line halo).
+  // An offset copy of the ocean boundary, restricted to class 'ocean' so lakes and rivers get no
+  // foam. It sits just below the bold coast line and eases out as you zoom in, so the surf reads
+  // as a whole-map poster flourish rather than clutter around a single city.
+  try {
+    if (map.getLayer('coastline-ink') && !map.getLayer('coast-foam')) {
+      map.addLayer(
+        {
+          id: 'coast-foam',
+          type: 'line',
+          source: 'openmaptiles',
+          'source-layer': 'water',
+          // Ocean only — no foam around lakes or rivers.
+          filter: [
+            'all',
+            ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+            ['==', ['get', 'class'], 'ocean'],
+          ],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#ffffff', // bright white foam over the aqua sea
+            'line-offset': 2, // hugs the waterline, just into the sea
+            'line-blur': 1.2, // soft foam edge, not a hard line
+            'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2, 6, 4.5],
+            // Bold at the whole-map poster view, easing out as you zoom into a city.
+            'line-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 7, 0.1],
+          },
+        },
+        'coastline-ink',
+      )
+    }
+  } catch {
+    // Water source-layer absent in this style version — skip the foam.
   }
 }
 
