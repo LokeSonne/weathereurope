@@ -97,7 +97,13 @@ onMounted(async () => {
     minZoom: 2,
     maxZoom: 12,
     maxBounds: EUROPE_BOUNDS,
+    dragRotate: false,
+    pitchWithRotate: false,
   })
+
+  // Prevent rotating the map via touch or keyboard as well.
+  map.touchZoomRotate.disableRotation()
+  map.keyboard.disableRotation()
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
