@@ -114,7 +114,11 @@ onMounted(async () => {
   map.on('moveend', () => scheduleRefresh())
 })
 
-/** Recolors Positron to a sun-faded Miami Art Deco palette: stucco land, aqua sea, mint parks. */
+/**
+ * Recolors Positron to a sun-faded Miami Art Deco palette (stucco land, aqua sea, mint parks)
+ * and traces a bold navy ink coastline over the sea — the confident single-weight line-work of
+ * a vintage travel poster.
+ */
 function tintBasemap() {
   if (!map) return
   const set = (layer: string, prop: string, value: string) => {
@@ -129,6 +133,35 @@ function tintBasemap() {
   set('park', 'fill-color', '#bfe0be') // pastel mint
   set('landcover_wood', 'fill-color', '#b2d9af')
   set('landuse_residential', 'fill-color', '#f0dcce') // pale stucco pink
+
+  // Bold ink coastline: a navy stroke traced along every water polygon edge (sea + lakes) — the
+  // signature outline of a vintage travel poster. It's a line layer over the same water
+  // source-layer, inserted just below the map's text labels so the ink frames the land without
+  // crossing the place names.
+  try {
+    if (map.getLayer('water') && !map.getLayer('coastline-ink')) {
+      const firstLabel = map.getStyle().layers?.find((l) => l.type === 'symbol')?.id
+      map.addLayer(
+        {
+          id: 'coastline-ink',
+          type: 'line',
+          source: 'openmaptiles',
+          'source-layer': 'water',
+          filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#1c3b52', // --miami-navy ink
+            'line-opacity': 0.85,
+            // Crisp but a removedas you zoom in.
+            'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 6, 0.0, 10, 0.0],
+          },
+        },
+        firstLabel,
+      )
+    }
+  } catch {
+    // Water source-layer absent in this style version — skip the coastline.
+  }
 }
 
 onBeforeUnmount(() => {
@@ -143,7 +176,10 @@ onBeforeUnmount(() => {
 watch(() => [props.range.from, props.range.to, props.tshirt], renderRange)
 
 // Turning the favorites filter on/off switches the data source.
-watch(() => props.favoritesOnly, () => void refreshData())
+watch(
+  () => props.favoritesOnly,
+  () => void refreshData(),
+)
 
 // Favorites changed: refetch if we're filtering (the in-view set changed), otherwise just
 // refresh the ❤️ indicators on the current markers.
@@ -204,8 +240,10 @@ function inViewFavorites(bounds: ReturnType<NonNullable<typeof map>['getBounds']
     const lng = Number(id.slice(0, comma))
     const lat = Number(id.slice(comma + 1))
     if (
-      lng >= bounds.getWest() && lng <= bounds.getEast() &&
-      lat >= bounds.getSouth() && lat <= bounds.getNorth()
+      lng >= bounds.getWest() &&
+      lng <= bounds.getEast() &&
+      lat >= bounds.getSouth() &&
+      lat <= bounds.getNorth()
     ) {
       ids.push(id)
     }
@@ -392,9 +430,7 @@ function renderRange() {
     const fav = isFavorite(m.id)
     // Rebuild the label: capital star + name, then the custom flat heart (flamingo, via CSS)
     // for favorites — the DESIGN.md ink glyph, not the emoji.
-    m.name.replaceChildren(
-      document.createTextNode((m.data.capital ? '★ ' : '') + m.data.name),
-    )
+    m.name.replaceChildren(document.createTextNode((m.data.capital ? '★ ' : '') + m.data.name))
     if (fav) {
       const favEl = document.createElement('span')
       favEl.className = 'city-marker__fav'
@@ -466,7 +502,10 @@ function updateEmptyState(visibleCount: number) {
       // Nothing was even fetched — no favorites in this area (or none at all yet).
       empty.value =
         favorites.value.size === 0
-          ? { icon: '❤️', text: 'No favorites yet — turn off the filter, then tap a city to add one.' }
+          ? {
+              icon: '❤️',
+              text: 'No favorites yet — turn off the filter, then tap a city to add one.',
+            }
           : { icon: '🔍', text: 'No favorite cities in this area.' }
     } else if (props.tshirt) {
       // Favorites are here, but the t-shirt filter hid them all.
