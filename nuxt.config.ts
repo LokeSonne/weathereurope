@@ -40,6 +40,8 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '16x16 32x32' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+        // PWA manifest — makes the app installable ("Install app" / Add to Home Screen).
+        { rel: 'manifest', href: '/manifest.json' },
       ],
     },
   },

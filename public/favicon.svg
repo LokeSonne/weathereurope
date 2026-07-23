@@ -1,30 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="T-shirt weather">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#4aa6ea"/>
-      <stop offset="1" stop-color="#9ad2f4"/>
-    </linearGradient>
-    <radialGradient id="sun" cx="0.5" cy="0.42" r="0.62">
-      <stop offset="0" stop-color="#ffe08a"/>
-      <stop offset="1" stop-color="#ffab34"/>
-    </radialGradient>
-    <linearGradient id="tee" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff8f6b"/>
-      <stop offset="1" stop-color="#f4623c"/>
-    </linearGradient>
-  </defs>
+  <!-- Vintage Miami Art Deco travel poster: flat, screen-printed, sun-faded pastels.
+       South Beach aqua tile (matches theme-color / the map's sea), a gold Deco sunburst,
+       and a warm coral tee with a cream screen-print outline. No gradients. See DESIGN.md. -->
 
-  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#sky)"/>
+  <!-- aqua sea tile with streamline-Deco rounded corners -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#6fd0ce"/>
 
-  <!-- sun peeking in the top-left corner -->
-  <g stroke="#ffd257" stroke-width="2.6" stroke-linecap="round">
-    <line x1="14" y1="7" x2="14" y2="2.5"/>
-    <line x1="6.5" y1="9.5" x2="3.5" y2="6.5"/>
-    <line x1="4" y1="17" x2="-0.5" y2="17"/>
+  <!-- gold Deco sunburst peeking from the top-left corner -->
+  <g fill="none" stroke="#f5b52e" stroke-width="2.4" stroke-linecap="round">
+    <path d="M15 3.2v4 M3.2 15h4 M6.4 6.4l2.8 2.8 M23.6 6.4l-2.8 2.8 M6.4 23.6l2.8-2.8 M24.2 15h4"/>
   </g>
-  <circle cx="14" cy="17" r="7.5" fill="url(#sun)"/>
+  <circle cx="15" cy="15" r="6.8" fill="#f5b52e"/>
 
-  <!-- t-shirt -->
-  <path fill="url(#tee)" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"
-        d="M26 20 L18 23 L12 33 L20 37 L22 36 L22 50 Q22 53 25 53 L39 53 Q42 53 42 50 L42 36 L44 37 L52 33 L46 23 L38 20 Q32 26 26 20 Z"/>
+  <!-- warm coral tee — the hero mark — with a cream screen-print outline -->
+  <path fill="#ec7d5c" stroke="#fbf3e2" stroke-width="2.2" stroke-linejoin="round"
+        d="M26 21 L18 24 L12 34 L20 38 L22 37 L22 51 Q22 54 25 54 L39 54 Q42 54 42 51 L42 37 L44 38 L52 34 L46 24 L38 21 Q32 27 26 21 Z"/>
 </svg>

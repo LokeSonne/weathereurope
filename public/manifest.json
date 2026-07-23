@@ -1,0 +1,21 @@
+{
+  "name": "T-Shirt Weather",
+  "short_name": "T-Shirt Weather",
+  "description": "See where in Europe it’s warm enough for a t-shirt — live temperatures and weather conditions for cities from capitals to towns, over a selectable date range.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "en",
+  "categories": ["weather", "travel"],
+  "background_color": "#fbf3e2",
+  "theme_color": "#6fd0ce",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/pwa-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/pwa-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/pwa-maskable-192.png", "type": "image/png", "sizes": "192x192", "purpose": "maskable" },
+    { "src": "/pwa-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}
