@@ -1,14 +1,15 @@
 /**
- * Sun-faded, vintage-travel-poster diverging cold→hot scale (°C) for the temperature pills.
- * Muted teal-blue → cream → terracotta, to sit inside the warm poster palette.
+ * Sun-faded Miami Art Deco diverging cold→hot scale (°C) for the temperature pills.
+ * Dusty periwinkle → aqua → pale butter → gold → coral → flamingo, so each ~7 °C step reads
+ * distinctly while staying inside the chalky, screen-printed South Beach palette.
  */
 export const TEMP_STOPS: Array<[temp: number, color: string]> = [
-  [-10, '#3a6b82'], // deep dusty ocean blue
-  [0, '#6aa39b'], // faded teal
-  [8, '#e6d6a0'], // pale cream-khaki (light pivot)
-  [15, '#efc266'], // warm gold
-  [22, '#e2924b'], // terracotta orange
-  [30, '#c74c2c'], // sunset rust
+  [-10, '#5e83b3'], // dusty cornflower blue (cold)
+  [0, '#78c9c6'], // South Beach aqua
+  [8, '#ede6b4'], // pale butter (light pivot)
+  [15, '#f4c96b'], // warm gold
+  [22, '#ee9a6a'], // sherbet coral
+  [30, '#da5a7e'], // flamingo sunset rose
 ]
 
 export const TEMP_MIN = -10
@@ -60,7 +61,7 @@ export function contrastText(temp: number): string {
   const r = r1 + (r2 - r1) * f
   const g = g1 + (g2 - g1) * f
   const b = b1 + (b2 - b1) * f
-  // Perceived luminance (0..255); light pills get deep-teal ink, dark pills get warm cream.
+  // Perceived luminance (0..255); light pills get deco-navy ink, dark pills get warm cream.
   const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-  return luminance > 150 ? '#1f4b4b' : '#f6efda'
+  return luminance > 150 ? '#1c3b52' : '#fbf3e2'
 }

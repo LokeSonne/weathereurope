@@ -78,12 +78,12 @@ function isEndpoint(day: number): boolean {
   width: 100%;
   max-width: 384px;
   box-sizing: border-box;
-  background: rgba(26, 58, 56, 0.88);
+  background: var(--miami-shell, rgba(28, 59, 82, 0.9));
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(246, 239, 218, 0.12);
+  border: 1px solid rgba(246, 239, 218, 0.14);
   border-radius: 12px;
   padding: 5px;
-  box-shadow: 0 6px 20px rgba(20, 40, 38, 0.3);
+  box-shadow: 0 6px 20px rgba(20, 40, 60, 0.3);
 }
 
 /* No gaps, so the selected days read as one continuous band. */
@@ -120,12 +120,12 @@ function isEndpoint(day: number): boolean {
 }
 
 .day-range__day--in-range {
-  background: rgba(210, 105, 74, 0.32);
+  background: rgba(232, 106, 147, 0.32);
   color: #fff;
 }
 
 .day-range__day--endpoint {
-  background: #d2694a;
+  background: var(--miami-flamingo, #e86a93);
   color: #fff;
   font-weight: 700;
 }

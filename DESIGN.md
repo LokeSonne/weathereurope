@@ -1,59 +1,63 @@
-# Design intent — "Vintage summer travel poster"
+# Design intent — "Vintage Miami Art Deco travel poster"
 
-The look is modelled on a **mid-century travel poster** (think Air France / SNCF seaside
-prints): a warm, sun-faded, flatly-illustrated Europe with a few bold, screen-printed
-colours. It suits the name — "T-Shirt Weather" is about summer, the seaside, and escape —
-and it makes the **weather data the hero** on a calm, low-noise canvas.
+The look is a **sun-faded Miami Art Deco travel poster** (think South Beach / Ocean Drive): a
+warm, chalky, flatly-illustrated Europe rendered in a handful of pastel, screen-printed
+colours — flamingo, aqua, butter, coral. It suits the name — "T-Shirt Weather" is about
+summer, the seaside, and escape — and it makes the **weather data the hero** on a calm,
+low-noise canvas.
+
+It is the **daytime, sun-bleached** side of Deco, not the neon night: bright but restrained,
+like a faded 1930s poster, never a Miami Vice light show.
 
 ## Principles
 
-- **Data first, decoration second.** The basemap recedes to a soft, limited palette so the
+- **Data first, decoration second.** The basemap recedes to a soft pastel palette so the
   temperature chips read instantly. Nothing on the base competes with the forecast.
-- **Warm, sun-faded, limited palette.** A handful of muted colours (cream, faded teal,
-  terracotta, sage) — the restraint of a screen print, not a photographic map.
+- **Sun-faded pastel, limited palette.** A handful of chalky South Beach colours (stucco cream,
+  aqua, mint, flamingo, coral) — the restraint of a screen print, not a photographic map.
 - **Flat, printed, still.** No 3D tilt, no rotation, north-up, framed to Europe — the map
   behaves like a printed poster you pan across, not a globe you fly around. (Rotation and
   pitch are disabled in `WeatherMap.vue`.)
-- **Quietly nostalgic.** A subtle paper grain and soft shadows suggest print, without
-  tipping into skeuomorphic kitsch.
+- **Streamline Deco geometry.** Rounded corners, a thin poster margin, and streamline
+  "speed-lines" — Art Deco motifs used sparingly, never kitsch.
 
-## Palette (source of truth: `app/utils/tempScale.ts`, `WeatherMap.vue`)
+## Palette
 
-**Basemap (Positron, retinted in `tintBasemap()`)**
-| Surface | Colour |
-| --- | --- |
-| Land | `#f1e6c9` warm cream |
-| Sea | `#83c0b4` faded poster teal |
-| Parks / woods | `#cdd9a8` / `#c7d5a2` muted sage |
-| Built-up areas | `#ece1c4` |
+**Accent / ink tokens (source of truth: `:root` in `app/app.vue`)** — referenced as CSS
+custom properties throughout the components, so a retint happens in one place.
 
-**Temperature ramp** (diverging cold→hot; muted to live inside the poster palette, but spread
-across a full lightness + hue swing so each ~7 °C step is distinct at a glance)
-| °C | Colour | |
-| --- | --- | --- |
-| −10 | `#3a6b82` | deep dusty ocean blue |
-| 0 | `#6aa39b` | faded teal |
-| 8 | `#e6d6a0` | pale cream-khaki (light pivot) |
-| 15 | `#efc266` | warm gold |
-| 22 | `#e2924b` | terracotta orange |
-| 30 | `#c74c2c` | sunset rust |
-
-The scale is a true diverging ramp: lightness rises to the cream pivot (~8 °C) then falls, while
-hue swings blue → teal → cream → gold → orange → rust. Cold (≤0 °C) and hot (≥~24 °C) chips carry
-warm-cream text; the lighter middle carries deep-teal ink (`contrastText()`).
-
-**Ink & accents**
 | Token | Colour | Use |
 | --- | --- | --- |
-| Deep-teal ink | `#1f4b4b` | text on light chips, city names |
-| Warm cream | `#f6efda` | text on dark chips, name-label background |
-| Cream border | `#f4ead0` | chip / pill outlines |
-| Terracotta | `#d2694a` | primary accent (date-range selection, Favorites active) |
-| Muted teal-green | `#3f9e86` | T-shirt-weather active |
-| Control shell | `rgba(26, 58, 56, 0.88)` | deep-teal frosted controls (day range, toggles, share) |
+| `--miami-flamingo` | `#e86a93` | primary accent (date-range selection, Favorites active) |
+| `--miami-teal` | `#2fa8a0` | T-shirt-weather active + day-cell ring |
+| `--miami-navy` | `#1c3b52` | ink: text on light chips, city names |
+| `--miami-cream` | `#fbf3e2` | text on dark chips, name-label background |
+| `--miami-cream-border` | `#f7eedb` | chip / pill outlines, poster margin |
+| `--miami-shell` | `rgba(28,59,82,0.9)` | deco-navy frosted controls (day range, toggles, share) |
 
-Chip text colour is chosen per-temperature by `contrastText()`: deep-teal ink on the lighter
-mid-range pills, warm cream on the darker cold/hot ends.
+**Basemap (Positron, retinted in `tintBasemap()` in `WeatherMap.vue`)**
+| Surface | Colour |
+| --- | --- |
+| Land | `#f4e9d8` warm stucco |
+| Sea | `#6fd0ce` South Beach aqua |
+| Parks / woods | `#bfe0be` / `#b2d9af` pastel mint |
+| Built-up areas | `#f0dcce` pale stucco pink |
+
+**Temperature ramp (source of truth: `app/utils/tempScale.ts`)** — a diverging cold→hot ramp,
+muted to live inside the pastel palette, spread across a full lightness + hue swing so each
+~7 °C step is distinct at a glance.
+| °C | Colour | |
+| --- | --- | --- |
+| −10 | `#5e83b3` | dusty cornflower blue |
+| 0 | `#78c9c6` | South Beach aqua |
+| 8 | `#ede6b4` | pale butter (light pivot) |
+| 15 | `#f4c96b` | warm gold |
+| 22 | `#ee9a6a` | sherbet coral |
+| 30 | `#da5a7e` | flamingo sunset rose |
+
+Lightness rises to the butter pivot (~8 °C) then falls, while hue swings blue → aqua → butter
+→ gold → coral → flamingo. Cold (≤−10 °C) and hot (≥~30 °C) chips carry warm-cream text; the
+lighter middle carries deco-navy ink — chosen per-temperature by `contrastText()`.
 
 ## Texture
 
@@ -63,21 +67,29 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
 
 ## Components
 
-- **City chip** — a rounded pill with a **cream border** and soft warm shadow; one cell per
-  day, tinted by the temperature ramp; a **cream name label with teal ink** below.
-- **Controls** (date range, toggles, share, status) — **deep-teal frosted** shells with cream
-  text; the date-range selection and Favorites use the **terracotta** accent, T-shirt weather
-  the muted teal-green. The T-shirt and Favorites toggles carry **custom flat ink icons**
-  (`IconTshirt.vue`, `IconHeart.vue`) — filled `currentColor` silhouettes, not emoji — so they
-  read as screen-printed marks that inherit the toggle's cream/white text.
+- **City chip** — a rounded pill with a **cream border** and soft shadow; one cell per day,
+  tinted by the temperature ramp; a **cream name label with navy ink** below.
+- **Weather glyphs** — flat, geometric **Deco ink icons** (`app/utils/weatherIcon.ts`): a
+  sunburst sun, streamline clouds, drops, flakes and a bolt, drawn in `currentColor` so each
+  inherits its chip's contrast ink. No emoji on the chips.
+- **Controls** (date range, toggles, share, status) — **deco-navy frosted** shells with cream
+  text; the date-range selection and Favorites use the **flamingo** accent, T-shirt weather the
+  **ocean teal**. The T-shirt and Favorites toggles carry **custom flat ink icons**
+  (`IconTshirt.vue`, `IconHeart.vue`) — filled `currentColor` silhouettes, not emoji.
+- **Poster margin** — a thin cream **frame** (`.poster-frame`) inset from the screen edges with
+  softly rounded corners, sitting above the map but below the overlays.
+- **Wordmark** — a corner **"T-SHIRT WEATHER"** poster wordmark (`.wordmark`) set in the Deco
+  display face, flanked by streamline **speed-lines** in flamingo. Hidden on narrow screens,
+  where the day-range spans the top.
 - **Decluttered dot** — the minimal fallback keeps a cream ring so it still reads as a place.
 
 ## Typography
 
-- **Current:** system UI sans, bold weights for the numerals.
-- **Intended (not yet built):** a heavy, condensed **display face** (e.g. Anton / Archivo
-  Black, self-hosted) for a poster **wordmark** ("T-SHIRT WEATHER") and the temperatures —
-  this is the single biggest thing still missing versus a real poster.
+- **Display / wordmark:** **Poiret One** — a thin geometric Deco face, self-hosted via
+  `@nuxt/fonts` (see `nuxt.config.ts`), exposed as `--font-display`. Its natural 400 weight is
+  the authentic thin-Deco look for the wordmark.
+- **Body / numerals:** system UI sans, bold weights for the temperature numerals — a heavier,
+  legible face at chip scale (~13px), where the thin display face would not read.
 
 ## Interaction
 
@@ -85,16 +97,8 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
   print" intent and keeps every chip upright and legible.
 - Zoom reveals detail (capitals → towns); chips collapse to dots when crowded.
 
-## Roadmap to fully land the look ("phase 2")
-
-1. **Flat weather icons in teal ink** to replace the emoji (`app/utils/weatherIcon.ts`) — the
-   emoji are the one element still fighting the flat, printed aesthetic.
-2. **Display typeface + wordmark** (see Typography) — the defining poster signal.
-3. Optional: a thin **cream frame** around the viewport (the poster's border), and a small
-   corner wordmark/credit set in the display face.
-
 ## Non-goals
 
-- No dark mode (the poster warmth is the identity).
+- **No dark mode / neon night** — the sun-faded daytime warmth is the identity.
 - No photorealistic terrain, 3D buildings, or map rotation.
-- No high-saturation "dashboard" colours — everything stays sun-faded.
+- No high-saturation "dashboard" colours — everything stays chalky and sun-faded.

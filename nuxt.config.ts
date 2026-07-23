@@ -16,7 +16,12 @@ const upstashMount =
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@nuxt/eslint', '@vercel/analytics'],
+  modules: ['@nuxt/eslint', '@vercel/analytics', '@nuxt/fonts'],
+
+  // Self-host the Deco display face for the poster wordmark (no runtime Google dependency).
+  fonts: {
+    families: [{ name: 'Poiret One', provider: 'google', weights: [400] }],
+  },
 
   app: {
     head: {
@@ -26,7 +31,7 @@ export default defineNuxtConfig({
         // viewport-fit=cover lets the map fill the screen edge-to-edge and enables the
         // env(safe-area-inset-*) values the overlays use to dodge the notch / rounded corners.
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-        { name: 'theme-color', content: '#4aa6ea' },
+        { name: 'theme-color', content: '#6fd0ce' },
         // Description, Open Graph, Twitter and canonical are set in app.vue via useSeoMeta,
         // where the runtime siteUrl is available for absolute URLs.
       ],

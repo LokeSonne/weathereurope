@@ -3,9 +3,9 @@ import { tempColor, contrastText, TEMP_MIN, TEMP_MAX } from '../app/utils/tempSc
 
 describe('tempColor', () => {
   it('returns the exact stop colors at the scale anchors', () => {
-    expect(tempColor(-10)).toBe('rgb(74, 124, 140)') // #4a7c8c
-    expect(tempColor(0)).toBe('rgb(123, 169, 172)') // #7ba9ac
-    expect(tempColor(30)).toBe('rgb(207, 107, 74)') // #cf6b4a
+    expect(tempColor(-10)).toBe('rgb(94, 131, 179)') // #5e83b3 cornflower
+    expect(tempColor(0)).toBe('rgb(120, 201, 198)') // #78c9c6 aqua
+    expect(tempColor(30)).toBe('rgb(218, 90, 126)') // #da5a7e flamingo
   })
 
   it('clamps out-of-domain temperatures to the endpoints', () => {
@@ -22,13 +22,13 @@ describe('tempColor', () => {
 })
 
 describe('contrastText', () => {
-  it('uses cream text on the darker (cold/hot) pills', () => {
-    expect(contrastText(-10)).toBe('#f6efda')
-    expect(contrastText(30)).toBe('#f6efda')
+  it('uses warm cream text on the darker (cold/hot) pills', () => {
+    expect(contrastText(-10)).toBe('#fbf3e2')
+    expect(contrastText(30)).toBe('#fbf3e2')
   })
 
-  it('uses deep-teal ink on the light (mild) pills', () => {
-    expect(contrastText(8)).toBe('#1f4b4b')
-    expect(contrastText(15)).toBe('#1f4b4b')
+  it('uses deco-navy ink on the light (mild) pills', () => {
+    expect(contrastText(8)).toBe('#1c3b52')
+    expect(contrastText(15)).toBe('#1c3b52')
   })
 })

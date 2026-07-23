@@ -43,7 +43,7 @@ useHead({
     {
       tagPosition: 'bodyOpen',
       innerHTML:
-        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.5 system-ui,sans-serif;color:#1a1f26;background:#eaf4fb">T-Shirt Weather is an interactive weather map of Europe. Please enable JavaScript to view live temperatures and conditions across the continent.</div>',
+        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.5 system-ui,sans-serif;color:#1c3b52;background:#f4e9d8">T-Shirt Weather is an interactive weather map of Europe. Please enable JavaScript to view live temperatures and conditions across the continent.</div>',
     },
   ],
   script: [
@@ -89,13 +89,21 @@ useHead({
       />
     </ClientOnly>
 
+    <!-- Poster margin + corner wordmark: purely decorative, never intercept map gestures. -->
+    <div class="poster-frame" aria-hidden="true" />
+    <div class="wordmark" aria-hidden="true">
+      <div class="wordmark__rule" />
+      <div class="wordmark__title">T-Shirt Weather</div>
+      <div class="wordmark__rule" />
+    </div>
+
     <div class="overlay overlay--top">
       <DayRange v-model="range" />
       <div class="overlay__toggles">
-        <MapToggle v-model="tshirt" label="T-shirt weather" active-color="#3f9e86">
+        <MapToggle v-model="tshirt" label="T-shirt weather" active-color="var(--miami-teal)">
           <template #icon><IconTshirt /></template>
         </MapToggle>
-        <MapToggle v-model="favoritesOnly" label="Favorites" active-color="#d2694a">
+        <MapToggle v-model="favoritesOnly" label="Favorites" active-color="var(--miami-flamingo)">
           <template #icon><IconHeart /></template>
         </MapToggle>
       </div>
@@ -110,6 +118,18 @@ useHead({
 </template>
 
 <style>
+/* Miami Art Deco palette — single source of truth for accent/ink tokens (see DESIGN.md).
+   The temperature ramp lives in app/utils/tempScale.ts; the basemap tint in WeatherMap.vue. */
+:root {
+  --miami-flamingo: #e86a93; /* primary accent: date-range selection, Favorites active */
+  --miami-teal: #2fa8a0; /* T-shirt-weather active + day-cell ring */
+  --miami-navy: #1c3b52; /* ink / text on light chips, city names */
+  --miami-shell: rgba(28, 59, 82, 0.9); /* frosted deco-navy control shell */
+  --miami-cream: #fbf3e2; /* text on dark chips, name-label background */
+  --miami-cream-border: #f7eedb; /* chip / pill outlines, poster margin */
+  --font-display: 'Poiret One', 'Century Gothic', system-ui, sans-serif; /* Deco wordmark */
+}
+
 html,
 body,
 #__nuxt {
@@ -139,6 +159,68 @@ body,
   border: 0;
 }
 
+
+/* Poster margin: a thin cream Deco border inset from the screen edges (above the map + grain,
+   below the interactive overlays). Rounded corners nod to streamline moderne. */
+.poster-frame {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  right: calc(8px + env(safe-area-inset-right));
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  left: calc(8px + env(safe-area-inset-left));
+  z-index: 7;
+  pointer-events: none;
+  border: 2px solid rgba(251, 243, 226, 0.92);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgba(28, 59, 82, 0.22),
+    0 0 0 1px rgba(28, 59, 82, 0.1);
+}
+
+/* Corner poster wordmark in the Deco display face, flanked by streamline "speed-lines". */
+.wordmark {
+  position: absolute;
+  top: calc(20px + env(safe-area-inset-top));
+  left: calc(22px + env(safe-area-inset-left));
+  z-index: 8;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.wordmark__title {
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--miami-navy);
+  text-shadow:
+    0 1px 0 rgba(251, 243, 226, 0.95),
+    0 0 12px rgba(251, 243, 226, 0.8);
+}
+
+.wordmark__rule {
+  width: 100%;
+  min-width: 132px;
+  height: 8px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--miami-flamingo) 0 1.5px,
+    transparent 1.5px 3px
+  );
+}
+
+/* On narrow screens the day-range spans the top, so the corner wordmark would collide — the
+   poster frame alone carries the look there. */
+@media (max-width: 720px) {
+  .wordmark {
+    display: none;
+  }
+}
 
 .overlay {
   position: absolute;

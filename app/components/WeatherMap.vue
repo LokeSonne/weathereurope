@@ -115,7 +115,7 @@ onMounted(async () => {
   map.on('moveend', () => scheduleRefresh())
 })
 
-/** Recolors Positron to a sun-faded travel-poster palette: cream land, soft teal sea. */
+/** Recolors Positron to a sun-faded Miami Art Deco palette: stucco land, aqua sea, mint parks. */
 function tintBasemap() {
   if (!map) return
   const set = (layer: string, prop: string, value: string) => {
@@ -125,11 +125,11 @@ function tintBasemap() {
       // Layer absent in this style version — skip.
     }
   }
-  set('background', 'background-color', '#f1e6c9') // warm cream land
-  set('water', 'fill-color', '#83c0b4') // faded poster teal
-  set('park', 'fill-color', '#cdd9a8') // muted sage
-  set('landcover_wood', 'fill-color', '#c7d5a2')
-  set('landuse_residential', 'fill-color', '#ece1c4')
+  set('background', 'background-color', '#f4e9d8') // warm stucco land
+  set('water', 'fill-color', '#6fd0ce') // South Beach aqua
+  set('park', 'fill-color', '#bfe0be') // pastel mint
+  set('landcover_wood', 'fill-color', '#b2d9af')
+  set('landuse_residential', 'fill-color', '#f0dcce') // pale stucco pink
 }
 
 onBeforeUnmount(() => {
@@ -331,7 +331,7 @@ function renderRange() {
       const t = m.data.temps[day]
       const code = m.data.codes[day]
       if (t === undefined || code === undefined) continue
-      const { icon, label } = weatherIcon(code)
+      const { svg, label } = weatherIcon(code)
       const tshirt = isTshirtWeather(t, code)
       if (tshirt) anyTshirt = true
 
@@ -347,7 +347,8 @@ function renderRange() {
 
       const iconEl = document.createElement('span')
       iconEl.className = 'city-marker__icon'
-      iconEl.textContent = icon
+      // Trusted, static, locally-authored SVG markup (see weatherIcon.ts) — no user input.
+      iconEl.innerHTML = svg
 
       const tempEl = document.createElement('span')
       tempEl.className = 'city-marker__temp'
@@ -539,11 +540,11 @@ function updateEmptyState(visibleCount: number) {
   display: inline-flex;
   align-items: center;
   gap: 0px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(26, 58, 56, 0.88);
+  border: 1px solid rgba(251, 243, 226, 0.14);
+  background: var(--miami-shell, rgba(28, 59, 82, 0.9));
   backdrop-filter: blur(10px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 20px rgba(20, 40, 60, 0.3);
+  color: var(--miami-cream, #fbf3e2);
   font-size: 13px;
   font-weight: 600;
   padding: 7px 13px;
@@ -555,7 +556,7 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .map-share:hover {
-  background: rgba(26, 58, 56, 0.96);
+  background: rgba(28, 59, 82, 0.98);
   color: #fff;
 }
 
@@ -573,7 +574,7 @@ function updateEmptyState(visibleCount: number) {
   font-size: 13px;
   font-weight: 500;
   color: #fff;
-  background: rgba(26, 58, 56, 0.86);
+  background: var(--miami-shell, rgba(28, 59, 82, 0.9));
   backdrop-filter: blur(6px);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
@@ -598,7 +599,7 @@ function updateEmptyState(visibleCount: number) {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  background: rgba(26, 58, 56, 0.9);
+  background: var(--miami-shell, rgba(28, 59, 82, 0.9));
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
@@ -716,11 +717,11 @@ function updateEmptyState(visibleCount: number) {
   overflow: hidden;
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(60, 50, 30, 0.26);
-  border: 2px solid #f4ead0;
+  border: 2px solid var(--miami-cream-border, #f7eedb);
 }
 
 .city-marker--capital .city-marker__pill {
-  border-color: #fbf4e2;
+  border-color: var(--miami-cream, #fbf3e2);
   box-shadow: 0 2px 8px rgba(60, 50, 30, 0.32);
 }
 
@@ -736,12 +737,12 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .city-marker__day + .city-marker__day {
-  border-left: 1.5px solid rgba(244, 234, 208, 0.6);
+  border-left: 1.5px solid rgba(251, 243, 226, 0.6);
 }
 
 /* T-shirt-weather mode: ring the warm-and-dry day cells, hide cities with none. */
 .city-marker__day--tshirt {
-  box-shadow: inset 0 0 0 2px #10b981;
+  box-shadow: inset 0 0 0 2px var(--miami-teal, #2fa8a0);
 }
 
 .city-marker--hidden {
@@ -758,8 +759,15 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .city-marker__icon {
-  font-size: 15px;
+  display: flex;
   line-height: 1;
+}
+
+/* Flat Deco weather glyphs (weatherIcon.ts): inherit the cell's contrast ink via currentColor. */
+.city-marker__icon svg {
+  display: block;
+  width: 15px;
+  height: 15px;
 }
 
 .city-marker__temp {
@@ -775,15 +783,15 @@ function updateEmptyState(visibleCount: number) {
   font-size: 11px;
   font-weight: 800;
   line-height: 1.4;
-  color: #1f4b4b;
+  color: var(--miami-navy, #1c3b52);
   white-space: nowrap;
-  background: #f6efda;
+  background: var(--miami-cream, #fbf3e2);
   border-radius: 5px;
   box-shadow: 0 1px 2px rgba(60, 50, 30, 0.22);
   pointer-events: none;
 }
 
 .city-marker--capital .city-marker__name {
-  color: #143b3b;
+  color: #12283a;
 }
 </style>
