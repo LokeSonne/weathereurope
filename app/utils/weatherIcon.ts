@@ -1,11 +1,20 @@
 /**
- * Maps a WMO weather code (as returned by Open-Meteo) to a flat, geometric "Deco ink" SVG
- * glyph + a display label. The glyphs are screen-printed silhouettes drawn in `currentColor`,
- * so on a temperature chip they inherit the pill's contrast ink (see `contrastText`), matching
- * the flat tee/heart marks (IconTshirt.vue / IconHeart.vue). See DESIGN.md.
+ * Maps a WMO weather code (as returned by Open-Meteo) to a flat, geometric SVG glyph + a
+ * display label. The glyphs are screen-printed silhouettes in a warm Miami Deco palette — a
+ * gold sun, soft-white / cool-gray clouds, sky-blue rain — matching the flat tee/heart marks
+ * (IconTshirt.vue / IconHeart.vue). They sit on temperature-tinted chips, so a subtle drop
+ * shadow (see `.city-marker__icon svg` in WeatherMap.vue) keeps them legible on any tint.
+ * See DESIGN.md.
  */
 
-/** Wraps glyph body markup in a 24×24 SVG that fills with the inherited text colour. */
+// Miami Deco weather palette.
+const GOLD = '#f5b52e' // sunny Deco gold
+const WHITE = '#fdfaf1' // warm cloud white
+const GRAY = '#aeb8c2' // cool overcast gray
+const BLUE = '#4f9dd6' // soft sky-blue rain
+
+/** Wraps glyph body markup in a 24×24 SVG. Elements carry their own colour; `currentColor`
+ * is only the fallback the neutral "unknown" glyph relies on. */
 function svg(body: string): string {
   return (
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">' +
@@ -14,43 +23,45 @@ function svg(body: string): string {
   )
 }
 
-// A puffy cloud pushed to the upper half, leaving room for rain/snow/bolt beneath it.
+// A puffy grey rain/snow/storm cloud pushed to the upper half, leaving room for the drops beneath.
 const CLOUD_TOP =
-  '<circle cx="9" cy="9" r="3.6"/><circle cx="14.6" cy="8" r="4.2"/>' +
-  '<rect x="6.4" y="9.4" width="11.8" height="4.4" rx="2.2"/>'
+  `<g fill="${GRAY}"><circle cx="9" cy="9" r="3.6"/><circle cx="14.6" cy="8" r="4.2"/>` +
+  '<rect x="6.4" y="9.4" width="11.8" height="4.4" rx="2.2"/></g>'
 
-// A centred cloud for plain overcast.
+// A centred grey cloud for plain overcast.
 const CLOUD_MID =
-  '<circle cx="8.8" cy="12" r="4"/><circle cx="14.8" cy="11" r="4.7"/>' +
-  '<rect x="5.8" y="12.4" width="12.6" height="5" rx="2.5"/>'
+  `<g fill="${GRAY}"><circle cx="8.8" cy="12" r="4"/><circle cx="14.8" cy="11" r="4.7"/>` +
+  '<rect x="5.8" y="12.4" width="12.6" height="5" rx="2.5"/></g>'
 
-// Deco sunburst: a solid disc ringed by short tapered rays (used whole, or small + a cloud).
+// Deco sunburst: a gold disc ringed by short tapered rays (used whole, or small + a cloud).
 const SUN =
-  '<circle cx="12" cy="12" r="4.4"/>' +
-  '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+  `<circle cx="12" cy="12" r="4.4" fill="${GOLD}"/>` +
+  `<g fill="none" stroke="${GOLD}" stroke-width="2" stroke-linecap="round">` +
   '<path d="M12 1.8v2.5M12 19.7v2.5M1.8 12h2.5M19.7 12h2.5' +
   'M4.7 4.7l1.8 1.8M17.5 17.5l1.8 1.8M19.3 4.7l-1.8 1.8M6.5 17.5l-1.8 1.8"/></g>'
 
-// A small sun peeking behind a cloud (partly cloudy).
+// A small gold sun peeking behind a white cloud (partly cloudy).
 const SUN_SMALL =
-  '<circle cx="8" cy="8" r="2.7"/>' +
-  '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+  `<circle cx="8" cy="8" r="2.7" fill="${GOLD}"/>` +
+  `<g fill="none" stroke="${GOLD}" stroke-width="1.6" stroke-linecap="round">` +
   '<path d="M8 2.2v1.7M2.2 8h1.7M3.9 3.9l1.2 1.2M12.1 3.9l-1.2 1.2M3.9 12.1l1.2-1.2"/></g>'
 const CLOUD_LOW =
-  '<circle cx="11" cy="15" r="3.4"/><circle cx="15.6" cy="14" r="4"/>' +
-  '<rect x="8.6" y="15.4" width="9.8" height="4.2" rx="2.1"/>'
+  `<g fill="${WHITE}"><circle cx="11" cy="15" r="3.4"/><circle cx="15.6" cy="14" r="4"/>` +
+  '<rect x="8.6" y="15.4" width="9.8" height="4.2" rx="2.1"/></g>'
 
-// Three short diagonal drops beneath a cloud.
+// Three short diagonal blue drops beneath a cloud.
 const RAIN =
-  '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+  `<g fill="none" stroke="${BLUE}" stroke-width="2" stroke-linecap="round">` +
   '<path d="M9 16l-1 3.6M12.5 16l-1 3.6M16 16l-1 3.6"/></g>'
-// Three flakes beneath a cloud.
-const SNOW = '<circle cx="9" cy="18.4" r="1.35"/><circle cx="12.5" cy="19" r="1.35"/><circle cx="16" cy="18.4" r="1.35"/>'
-// A filled Deco lightning bolt.
-const BOLT = '<path d="M13.2 13.4l-3.4 4.6h2.5l-1.2 3.7 4.5-5.4h-2.7l1.4-2.9z"/>'
-// Four stacked haze bars.
+// Three white flakes beneath a cloud.
+const SNOW =
+  `<g fill="${WHITE}"><circle cx="9" cy="18.4" r="1.35"/><circle cx="12.5" cy="19" r="1.35"/>` +
+  '<circle cx="16" cy="18.4" r="1.35"/></g>'
+// A filled gold Deco lightning bolt.
+const BOLT = `<path d="M13.2 13.4l-3.4 4.6h2.5l-1.2 3.7 4.5-5.4h-2.7l1.4-2.9z" fill="${GOLD}"/>`
+// Four stacked grey haze bars.
 const FOG =
-  '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+  `<g fill="none" stroke="${GRAY}" stroke-width="2" stroke-linecap="round">` +
   '<path d="M4 8h16M6 12h12M4 16h16M8 20h8"/></g>'
 
 const CLEAR = svg(SUN)

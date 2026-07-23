@@ -756,11 +756,13 @@ function updateEmptyState(visibleCount: number) {
   line-height: 1;
 }
 
-/* Flat Deco weather glyphs (weatherIcon.ts): inherit the cell's contrast ink via currentColor. */
+/* Flat Deco weather glyphs (weatherIcon.ts): gold sun, white/grey clouds, blue rain. A faint
+   navy shadow separates them from the temperature-tinted chip, even on warm gold/butter days. */
 .city-marker__icon svg {
   display: block;
   width: 15px;
   height: 15px;
+  filter: drop-shadow(0 0.5px 0.5px rgba(28, 59, 82, 0.45));
 }
 
 .city-marker__temp {
