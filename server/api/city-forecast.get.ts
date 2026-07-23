@@ -23,9 +23,11 @@ export default defineEventHandler(async (event) => {
   const cities = selectCities(bbox, zoom)
   const forecasts = await resolveForecasts(cities.map((c) => ({ lat: c.lat, lng: c.lng })))
 
-  // Let the CDN (e.g. Vercel's edge) serve identical viewports without re-invoking the
-  // function, and keep serving slightly stale data while it revalidates.
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600')
+  // Quantized requests (see WeatherMap.refreshData) make identical viewports share a URL, so the
+  // browser max-age lets the client's own HTTP cache serve repeat/nearby views with no roundtrip.
+  // s-maxage keeps the CDN (e.g. Vercel's edge) absorbing cross-user traffic without re-invoking
+  // the function, and stale-while-revalidate keeps serving slightly stale data while it refreshes.
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600')
 
   return { type: 'FeatureCollection' as const, features: toForecastFeatures(cities, forecasts) }
 })

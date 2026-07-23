@@ -212,6 +212,14 @@ function inViewFavorites(bounds: ReturnType<NonNullable<typeof map>['getBounds']
   return ids
 }
 
+/** Local calendar day (YYYY-M-D). Used to bust the forecast cache at midnight: forecasts are
+ *  indexed by offset from "today", so a response cached across the date boundary would show the
+ *  wrong day at index 0. */
+function localDay(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
 async function refreshData() {
   if (!map) return
   const bounds = map.getBounds()
@@ -235,13 +243,27 @@ async function refreshData() {
           })
         : { type: 'FeatureCollection', features: [] }
     } else {
+      // Quantize the request so nearby/repeat viewports resolve to an identical URL, letting the
+      // browser's HTTP cache serve them without a roundtrip (see the endpoint's Cache-Control).
+      // Zoom snaps to its selection tier via ceil(): minPopForZoom() buckets are constant on
+      // (n-1, n], so this reproduces the exact city set the raw zoom would select. The bbox snaps
+      // outward to a zoom-scaled grid, so small pans stay inside the same cell (cache hit) and the
+      // grid pads the fetch slightly beyond the view, revealing already-loaded cities on the pan.
+      // Coarser grid = more hits but more over-fetch (and, at the highest zooms, a denser area the
+      // server's MAX_CITIES cap may trim at the edges).
+      const zoomTier = Math.ceil(map.getZoom())
+      const grid = 360 / 2 ** (zoomTier + 1)
+      const snapDown = (v: number) => Math.floor(v / grid) * grid
+      const snapUp = (v: number) => Math.ceil(v / grid) * grid
+
       data = await $fetch<CityFeatureCollection>('/api/city-forecast', {
         query: {
-          minLng: bounds.getWest(),
-          minLat: bounds.getSouth(),
-          maxLng: bounds.getEast(),
-          maxLat: bounds.getNorth(),
-          zoom: map.getZoom(),
+          minLng: snapDown(bounds.getWest()),
+          minLat: snapDown(bounds.getSouth()),
+          maxLng: snapUp(bounds.getEast()),
+          maxLat: snapUp(bounds.getNorth()),
+          zoom: zoomTier,
+          day: localDay(),
         },
         signal: controller.signal,
       })
