@@ -214,9 +214,11 @@ body,
   );
 }
 
-/* On narrow screens the day-range spans the top, so the corner wordmark would collide — the
-   poster frame alone carries the look there. */
+/* The poster chrome (margin frame + corner wordmark) is a large-screen enhancement. On narrow
+   screens the day-range spans the top edge-to-edge and the attribution becomes a full-width
+   bottom band, so a rectangular margin would cross both — hide the chrome and keep mobile clean. */
 @media (max-width: 720px) {
+  .poster-frame,
   .wordmark {
     display: none;
   }

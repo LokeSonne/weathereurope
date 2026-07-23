@@ -76,11 +76,12 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
   text; the date-range selection and Favorites use the **flamingo** accent, T-shirt weather the
   **ocean teal**. The T-shirt and Favorites toggles carry **custom flat ink icons**
   (`IconTshirt.vue`, `IconHeart.vue`) — filled `currentColor` silhouettes, not emoji.
-- **Poster margin** — a thin cream **frame** (`.poster-frame`) inset from the screen edges with
-  softly rounded corners, sitting above the map but below the overlays.
-- **Wordmark** — a corner **"T-SHIRT WEATHER"** poster wordmark (`.wordmark`) set in the Deco
-  display face, flanked by streamline **speed-lines** in flamingo. Hidden on narrow screens,
-  where the day-range spans the top.
+- **Poster chrome (large screens only)** — a thin cream **margin frame** (`.poster-frame`) inset
+  from the screen edges with softly rounded corners, plus a corner **"T-SHIRT WEATHER"** poster
+  **wordmark** (`.wordmark`) set in the Deco display face and flanked by streamline
+  **speed-lines** in flamingo. Both are **hidden at ≤720px**: on narrow screens the day-range
+  spans the top edge-to-edge and the attribution becomes a full-width bottom band, so a
+  rectangular margin would cross both. The basemap, chips and controls carry the look on mobile.
 - **Decluttered dot** — the minimal fallback keeps a cream ring so it still reads as a place.
 
 ## Typography
