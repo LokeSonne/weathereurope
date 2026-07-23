@@ -106,8 +106,6 @@ onMounted(async () => {
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
 
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-
   map.on('load', () => {
     tintBasemap()
     void refreshData()
@@ -644,11 +642,6 @@ function updateEmptyState(visibleCount: number) {
 <style>
 /* Keep MapLibre's own controls clear of the notch / rounded corners under viewport-fit=cover.
    These elements are added at runtime, so the rules must be global (not scoped). */
-.maplibregl-ctrl-top-right {
-  margin-top: env(safe-area-inset-top);
-  margin-right: env(safe-area-inset-right);
-}
-
 .maplibregl-ctrl-bottom-right {
   margin-bottom: env(safe-area-inset-bottom);
   margin-right: env(safe-area-inset-right);
