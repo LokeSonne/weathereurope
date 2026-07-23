@@ -27,15 +27,20 @@ and it makes the **weather data the hero** on a calm, low-noise canvas.
 | Parks / woods | `#cdd9a8` / `#c7d5a2` muted sage |
 | Built-up areas | `#ece1c4` |
 
-**Temperature ramp** (diverging cold→hot, deliberately muted so it lives inside the poster palette)
+**Temperature ramp** (diverging cold→hot; muted to live inside the poster palette, but spread
+across a full lightness + hue swing so each ~7 °C step is distinct at a glance)
 | °C | Colour | |
 | --- | --- | --- |
-| −10 | `#4a7c8c` | dusty teal-blue |
-| 0 | `#7ba9ac` | faded teal |
-| 8 | `#d9d3b0` | pale cream-khaki |
-| 15 | `#e6c88a` | warm sand |
-| 22 | `#e0996a` | soft terracotta |
-| 30 | `#cf6b4a` | sunset rust |
+| −10 | `#3a6b82` | deep dusty ocean blue |
+| 0 | `#6aa39b` | faded teal |
+| 8 | `#e6d6a0` | pale cream-khaki (light pivot) |
+| 15 | `#efc266` | warm gold |
+| 22 | `#e2924b` | terracotta orange |
+| 30 | `#c74c2c` | sunset rust |
+
+The scale is a true diverging ramp: lightness rises to the cream pivot (~8 °C) then falls, while
+hue swings blue → teal → cream → gold → orange → rust. Cold (≤0 °C) and hot (≥~24 °C) chips carry
+warm-cream text; the lighter middle carries deep-teal ink (`contrastText()`).
 
 **Ink & accents**
 | Token | Colour | Use |

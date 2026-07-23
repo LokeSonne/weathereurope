@@ -3,12 +3,12 @@
  * Muted teal-blue → cream → terracotta, to sit inside the warm poster palette.
  */
 export const TEMP_STOPS: Array<[temp: number, color: string]> = [
-  [-10, '#4a7c8c'], // dusty teal-blue
-  [0, '#7ba9ac'], // faded teal
-  [8, '#d9d3b0'], // pale cream-khaki
-  [15, '#e6c88a'], // warm sand
-  [22, '#e0996a'], // soft terracotta
-  [30, '#cf6b4a'], // sunset rust
+  [-10, '#3a6b82'], // deep dusty ocean blue
+  [0, '#6aa39b'], // faded teal
+  [8, '#e6d6a0'], // pale cream-khaki (light pivot)
+  [15, '#efc266'], // warm gold
+  [22, '#e2924b'], // terracotta orange
+  [30, '#c74c2c'], // sunset rust
 ]
 
 export const TEMP_MIN = -10
