@@ -92,8 +92,8 @@ useHead({
     <div class="overlay overlay--top">
       <DayRange v-model="range" />
       <div class="overlay__toggles">
-        <MapToggle v-model="tshirt" icon="👕" label="T-shirt weather" active-color="#10b981" />
-        <MapToggle v-model="favoritesOnly" icon="❤️" label="Favorites" active-color="#e0245e" />
+        <MapToggle v-model="tshirt" icon="👕" label="T-shirt weather" active-color="#3f9e86" />
+        <MapToggle v-model="favoritesOnly" icon="❤️" label="Favorites" active-color="#d2694a" />
       </div>
     </div>
 

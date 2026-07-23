@@ -91,7 +91,8 @@ onMounted(async () => {
 
   map = new maplibregl.Map({
     container: container.value,
-    style: 'https://tiles.openfreemap.org/styles/liberty',
+    // Minimal Positron base, retinted to a warm vintage-poster palette in tintBasemap().
+    style: 'https://tiles.openfreemap.org/styles/positron',
     center: props.initialView ? [props.initialView.lng, props.initialView.lat] : [10, 50],
     zoom: props.initialView?.zoom ?? 3.5,
     minZoom: 2,
@@ -107,9 +108,29 @@ onMounted(async () => {
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
-  map.on('load', () => void refreshData())
+  map.on('load', () => {
+    tintBasemap()
+    void refreshData()
+  })
   map.on('moveend', () => scheduleRefresh())
 })
+
+/** Recolors Positron to a sun-faded travel-poster palette: cream land, soft teal sea. */
+function tintBasemap() {
+  if (!map) return
+  const set = (layer: string, prop: string, value: string) => {
+    try {
+      if (map!.getLayer(layer)) map!.setPaintProperty(layer, prop, value)
+    } catch {
+      // Layer absent in this style version — skip.
+    }
+  }
+  set('background', 'background-color', '#f1e6c9') // warm cream land
+  set('water', 'fill-color', '#83c0b4') // faded poster teal
+  set('park', 'fill-color', '#cdd9a8') // muted sage
+  set('landcover_wood', 'fill-color', '#c7d5a2')
+  set('landuse_residential', 'fill-color', '#ece1c4')
+}
 
 onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
@@ -433,6 +454,7 @@ function updateEmptyState(visibleCount: number) {
 <template>
   <div class="weather-map">
     <div ref="container" class="weather-map__canvas" />
+    <div class="map-grain" aria-hidden="true" />
 
     <div class="map-actions">
       <div v-if="loading" class="map-status map-status--loading" role="status">
@@ -476,6 +498,17 @@ function updateEmptyState(visibleCount: number) {
   inset: 0;
 }
 
+/* Subtle print-grain for a vintage-poster feel; sits above the map but below the controls. */
+.map-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
 /* Bottom-left stack (clear of the full-width day selector on mobile): the Share button
    anchors at the corner and transient status pills stack above it. */
 .map-actions {
@@ -507,7 +540,7 @@ function updateEmptyState(visibleCount: number) {
   align-items: center;
   gap: 0px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 20, 26, 0.82);
+  background: rgba(26, 58, 56, 0.88);
   backdrop-filter: blur(10px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
   color: rgba(255, 255, 255, 0.9);
@@ -522,7 +555,7 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .map-share:hover {
-  background: rgba(17, 20, 26, 0.92);
+  background: rgba(26, 58, 56, 0.96);
   color: #fff;
 }
 
@@ -540,7 +573,7 @@ function updateEmptyState(visibleCount: number) {
   font-size: 13px;
   font-weight: 500;
   color: #fff;
-  background: rgba(20, 24, 30, 0.8);
+  background: rgba(26, 58, 56, 0.86);
   backdrop-filter: blur(6px);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
@@ -565,7 +598,7 @@ function updateEmptyState(visibleCount: number) {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  background: rgba(20, 24, 30, 0.85);
+  background: rgba(26, 58, 56, 0.9);
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   pointer-events: none;
@@ -679,16 +712,16 @@ function updateEmptyState(visibleCount: number) {
 .city-marker__pill {
   display: flex;
   align-items: stretch;
-  border-radius: 8px;
+  border-radius: 9px;
   overflow: hidden;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 6px rgba(60, 50, 30, 0.26);
+  border: 2px solid #f4ead0;
 }
 
 .city-marker--capital .city-marker__pill {
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  border-color: #fbf4e2;
+  box-shadow: 0 2px 8px rgba(60, 50, 30, 0.32);
 }
 
 /* One cell per day in the selected range. */
@@ -703,7 +736,7 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .city-marker__day + .city-marker__day {
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  border-left: 1.5px solid rgba(244, 234, 208, 0.6);
 }
 
 /* T-shirt-weather mode: ring the warm-and-dry day cells, hide cities with none. */
@@ -716,40 +749,41 @@ function updateEmptyState(visibleCount: number) {
 }
 
 .city-marker__wday {
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 8.5px;
+  font-weight: 800;
   line-height: 1;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  opacity: 0.85;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
 }
 
 .city-marker__icon {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
 }
 
 .city-marker__temp {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   line-height: 1;
+  letter-spacing: -0.01em;
 }
 
 .city-marker__name {
-  margin-top: 3px;
-  padding: 1px 5px;
+  margin-top: 4px;
+  padding: 1px 7px;
   font-size: 11px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: #14181e;
+  font-weight: 800;
+  line-height: 1.4;
+  color: #1f4b4b;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: #f6efda;
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.22);
   pointer-events: none;
 }
 
 .city-marker--capital .city-marker__name {
-  font-weight: 700;
+  color: #143b3b;
 }
 </style>

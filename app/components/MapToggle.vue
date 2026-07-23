@@ -25,11 +25,11 @@ const active = defineModel<boolean>({ required: true })
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 20, 26, 0.82);
+  border: 1px solid rgba(246, 239, 218, 0.12);
+  background: rgba(26, 58, 56, 0.88);
   backdrop-filter: blur(10px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-  color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 6px 20px rgba(20, 40, 38, 0.3);
+  color: rgba(246, 239, 218, 0.8);
   font-size: 13px;
   font-weight: 600;
   padding: 7px 14px;
@@ -40,7 +40,7 @@ const active = defineModel<boolean>({ required: true })
 
 .map-toggle:hover {
   color: #fff;
-  background: rgba(17, 20, 26, 0.92);
+  background: rgba(26, 58, 56, 0.96);
 }
 
 .map-toggle--active {

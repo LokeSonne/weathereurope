@@ -1,11 +1,14 @@
-/** Diverging cold→hot color scale, in °C, used to tint the city temperature pills. */
+/**
+ * Sun-faded, vintage-travel-poster diverging cold→hot scale (°C) for the temperature pills.
+ * Muted teal-blue → cream → terracotta, to sit inside the warm poster palette.
+ */
 export const TEMP_STOPS: Array<[temp: number, color: string]> = [
-  [-10, '#2166ac'],
-  [0, '#67a9cf'],
-  [8, '#d1e5f0'],
-  [15, '#fddbc7'],
-  [22, '#ef8a62'],
-  [30, '#b2182b'],
+  [-10, '#4a7c8c'], // dusty teal-blue
+  [0, '#7ba9ac'], // faded teal
+  [8, '#d9d3b0'], // pale cream-khaki
+  [15, '#e6c88a'], // warm sand
+  [22, '#e0996a'], // soft terracotta
+  [30, '#cf6b4a'], // sunset rust
 ]
 
 export const TEMP_MIN = -10
@@ -57,7 +60,7 @@ export function contrastText(temp: number): string {
   const r = r1 + (r2 - r1) * f
   const g = g1 + (g2 - g1) * f
   const b = b1 + (b2 - b1) * f
-  // Perceived luminance (0..255); light pills get dark text, dark pills get white.
+  // Perceived luminance (0..255); light pills get deep-teal ink, dark pills get warm cream.
   const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-  return luminance > 150 ? '#0b1f2a' : '#ffffff'
+  return luminance > 150 ? '#1f4b4b' : '#f6efda'
 }
