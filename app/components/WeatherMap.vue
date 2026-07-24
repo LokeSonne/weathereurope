@@ -81,6 +81,9 @@ const shareState = ref<'idle' | 'copied'>('idle')
 const MARKER_GAP = -10
 
 let map: MapLibreMap | undefined
+// Reactive handle to the loaded map, so the decorative bird flock can read the zoom level
+// (it only appears when zoomed in) and mount once the style is ready.
+const mapRef = shallowRef<MapLibreMap>()
 let abortController: AbortController | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 let markers: CityMarker[] = []
@@ -142,6 +145,8 @@ onMounted(async () => {
 
   map.on('load', () => {
     tintBasemap()
+    // Expose the ready map to the decorative bird flock overlay.
+    mapRef.value = map
     void refreshData()
   })
   map.on('moveend', () => scheduleRefresh())
@@ -622,6 +627,7 @@ function updateEmptyState(visibleCount: number) {
   <div class="weather-map">
     <div ref="container" class="weather-map__canvas" />
     <div class="map-grain" aria-hidden="true" />
+    <Birds3D v-if="mapRef" :map="mapRef" />
 
     <div class="map-actions">
       <div v-if="loading" class="map-status map-status--loading" role="status">

@@ -16,8 +16,10 @@ like a faded 1930s poster, never a Miami Vice light show.
 - **Sun-faded pastel, limited palette.** A handful of chalky South Beach colours (stucco cream,
   aqua, mint, flamingo, coral) — the restraint of a screen print, not a photographic map.
 - **Flat, printed, still.** No 3D tilt, no rotation, north-up, framed as a single flat world — the
-  map behaves like a printed poster you pan across, not a globe you fly around. (Rotation and
-  pitch are disabled in `WeatherMap.vue`.)
+  *map* behaves like a printed poster you pan across, not a globe you fly around. (Rotation and
+  pitch are disabled in `WeatherMap.vue`.) The one exception is the decorative **3D bird flock**
+  (see Motifs): it lives in its own perspective layer *above* the map, so the poster stays flat
+  while a little real life passes over it.
 - **Streamline Deco geometry.** Rounded corners, a thin poster margin, and streamline
   "speed-lines" — Art Deco motifs used sparingly, never kitsch.
 
@@ -64,6 +66,24 @@ lighter middle carries deco-navy ink — chosen per-temperature by `contrastText
 A faint monochrome **film grain** (`feTurbulence` SVG, `mix-blend-mode: multiply`, ~50%
 opacity) sits above the map and below the controls (`.map-grain`). Just enough to read as
 "printed," never so much that it muddies the chips.
+
+## Motifs
+
+- **3D bird flock** (`Birds3D.vue`) — small, low-poly **white gulls** with flapping wings that
+  drift across the sky. Because the map is locked flat, the flock lives in its **own three.js
+  perspective scene** rendered on a transparent WebGL canvas over the map: a camera looking
+  slightly down on a **boids** simulation (separation, alignment, cohesion + a steady migration
+  bias), so birds nearer the camera are larger and the flock reads with real depth as it crosses.
+  It's deliberately restrained so it never competes with the data:
+  - **Only when zoomed in** — a whole-world view stays a clean poster; flocks appear from about
+    city/regional zoom (`ZOOM_MIN`) and are cleared when you zoom back out.
+  - **Infrequent + transient** — a small flock flies in from one edge, crosses, and leaves; then a
+    long, random gap before the next. Never a permanent flock milling on screen.
+
+  The canvas sits **above** the map and the print grain (so the white gulls stay crisp), below the
+  frame and controls, and never intercepts map gestures. Flat-shaded (no lighting), true to the
+  screen-print look. **Disabled under `prefers-reduced-motion`**. three.js is dynamically imported
+  (client-only), so it stays out of the SSR bundle.
 
 ## Components
 
