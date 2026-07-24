@@ -10,12 +10,12 @@ const initialView = shared.view
 
 const TITLE = 'T-Shirt Weather'
 const DESCRIPTION =
-  'See where in Europe it’s warm enough for a t-shirt — live temperatures and weather ' +
+  'See where in the world it’s warm enough for a t-shirt — live temperatures and weather ' +
   'conditions for cities from capitals to towns, over a selectable date range.'
 
 const siteUrl = useRuntimeConfig().public.siteUrl
 const ogImage = `${siteUrl}/og-image.png`
-const imageAlt = 'A weather map of Europe showing city temperatures and conditions'
+const imageAlt = 'A world weather map showing city temperatures and conditions'
 
 useSeoMeta({
   description: DESCRIPTION,
@@ -43,7 +43,7 @@ useHead({
     {
       tagPosition: 'bodyOpen',
       innerHTML:
-        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.5 system-ui,sans-serif;color:#1c3b52;background:#f4e9d8">T-Shirt Weather is an interactive weather map of Europe. Please enable JavaScript to view live temperatures and conditions across the continent.</div>',
+        '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.5 system-ui,sans-serif;color:#1c3b52;background:#f4e9d8">T-Shirt Weather is an interactive weather map of the world. Please enable JavaScript to view live temperatures and conditions across the globe.</div>',
     },
   ],
   script: [
@@ -71,12 +71,12 @@ useHead({
 
     <!-- Crawlable, screen-reader-friendly heading + intro for an otherwise map-only page. -->
     <header class="visually-hidden">
-      <h1>T-Shirt Weather — live weather map of Europe</h1>
+      <h1>T-Shirt Weather — live weather map of the world</h1>
       <p>
-        An interactive map showing current temperatures and weather conditions for European
-        cities, from capital cities down to small towns. Pick a date range up to a week ahead,
+        An interactive map showing current temperatures and weather conditions for cities
+        worldwide, from capital cities down to small towns. Pick a date range up to a week ahead,
         and toggle “t-shirt weather” to highlight where it’s warm and dry enough for just a tee.
-        Weather data from Open-Meteo (MET Norway model); city data from GeoNames.
+        Weather data from Open-Meteo; city data from GeoNames.
       </p>
     </header>
 
@@ -110,7 +110,7 @@ useHead({
     </div>
 
     <div class="attribution">
-      Weather: Open-Meteo (MET Norway model) · Cities:
+      Weather: Open-Meteo · Cities:
       <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) ·
       Map: OpenFreeMap / OpenStreetMap contributors
     </div>

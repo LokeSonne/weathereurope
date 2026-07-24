@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ ids?: unknown }>(event)
   const ids = Array.isArray(body?.ids) ? body.ids.filter((v): v is string => typeof v === 'string') : []
 
-  const cities = citiesByIds(ids)
+  const cities = await citiesByIds(ids)
   const forecasts = await resolveForecasts(cities.map((c) => ({ lat: c.lat, lng: c.lng })))
 
   setResponseHeader(event, 'Cache-Control', 'private, no-store')

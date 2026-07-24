@@ -1,4 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { fileURLToPath } from 'node:url'
 
 // Use a shared Upstash Redis store for the forecast cache + rate limiter when its
 // credentials are present (e.g. on Vercel). Without them — local dev — Nitro falls
@@ -68,5 +69,12 @@ export default defineNuxtConfig({
 
   nitro: {
     storage: upstashMount ? { 'forecast-cache': upstashMount, ratelimit: upstashMount } : {},
+    // Bundle the per-cell city chunks as server assets so they can be read on demand
+    // (useStorage('assets:cities')) instead of imported into the JS bundle at boot — only the
+    // handful of cells a viewport touches are ever loaded/parsed. See server/utils/cities.ts.
+    // Absolute path so it resolves the same regardless of Nitro's asset base dir.
+    serverAssets: [
+      { baseName: 'cities', dir: fileURLToPath(new URL('server/data/cities', import.meta.url)) },
+    ],
   },
 })

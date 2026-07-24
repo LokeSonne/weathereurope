@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'minLng, minLat, maxLng, maxLat and zoom are required numeric query params' })
   }
 
-  const cities = selectCities(bbox, zoom)
+  const cities = await selectCities(bbox, zoom)
   const forecasts = await resolveForecasts(cities.map((c) => ({ lat: c.lat, lng: c.lng })))
 
   // Quantized requests (see WeatherMap.refreshData) make identical viewports share a URL, so the

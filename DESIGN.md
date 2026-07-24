@@ -1,7 +1,7 @@
 # Design intent — "Vintage Miami Art Deco travel poster"
 
 The look is a **sun-faded Miami Art Deco travel poster** (think South Beach / Ocean Drive): a
-warm, chalky, flatly-illustrated Europe rendered in a handful of pastel, screen-printed
+warm, chalky, flatly-illustrated world map rendered in a handful of pastel, screen-printed
 colours — flamingo, aqua, butter, coral. It suits the name — "T-Shirt Weather" is about
 summer, the seaside, and escape — and it makes the **weather data the hero** on a calm,
 low-noise canvas.
@@ -15,8 +15,8 @@ like a faded 1930s poster, never a Miami Vice light show.
   temperature chips read instantly. Nothing on the base competes with the forecast.
 - **Sun-faded pastel, limited palette.** A handful of chalky South Beach colours (stucco cream,
   aqua, mint, flamingo, coral) — the restraint of a screen print, not a photographic map.
-- **Flat, printed, still.** No 3D tilt, no rotation, north-up, framed to Europe — the map
-  behaves like a printed poster you pan across, not a globe you fly around. (Rotation and
+- **Flat, printed, still.** No 3D tilt, no rotation, north-up, framed as a single flat world — the
+  map behaves like a printed poster you pan across, not a globe you fly around. (Rotation and
   pitch are disabled in `WeatherMap.vue`.)
 - **Streamline Deco geometry.** Rounded corners, a thin poster margin, and streamline
   "speed-lines" — Art Deco motifs used sparingly, never kitsch.
@@ -94,8 +94,8 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
 
 ## Interaction
 
-- Locked to Europe (`maxBounds`), **north-up, no rotation or pitch** — reinforces the "flat
-  print" intent and keeps every chip upright and legible.
+- Flat Web Mercator world, **north-up, no rotation or pitch** — reinforces the "flat print" intent
+  and keeps every chip upright and legible.
 - Zoom reveals detail (capitals → towns); chips collapse to dots when crowded.
 
 ## Non-goals

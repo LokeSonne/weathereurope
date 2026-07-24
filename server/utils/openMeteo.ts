@@ -21,9 +21,14 @@ interface Point {
 const FRESH_TTL_MS = 40 * 60 * 1000
 /** How long entries are retained overall, so we can serve them stale if Open-Meteo is down. */
 const HARD_TTL_SECONDS = 24 * 60 * 60
+/** Max coordinates per Open-Meteo call; larger fan-outs are split across several calls. */
+const BULK_BATCH_SIZE = 100
 
+// Bump the version segment whenever the upstream data or cached shape changes, so a deploy starts
+// from a clean cache instead of serving entries fetched under the old assumptions. v2: switched the
+// Open-Meteo model from `metno_seamless` (Europe-only) to `best_match` for worldwide coverage.
 function cacheKey(point: Point): string {
-  return `forecast:${point.lat}:${point.lng}`
+  return `forecast:v2:${point.lat}:${point.lng}`
 }
 
 /**
@@ -79,7 +84,32 @@ export async function resolveForecasts(points: Point[]): Promise<Array<CityForec
   return results
 }
 
+/**
+ * Bulk-fetches forecasts, batching large fan-outs into several Open-Meteo calls so no single URL
+ * grows too long and a partial upstream failure only drops its own batch — those points fall back
+ * to stale/omit in resolveForecasts rather than failing the whole response.
+ */
 async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | undefined>> {
+  const results = new Array<CityForecast | undefined>(points.length)
+  const batchCount = Math.ceil(points.length / BULK_BATCH_SIZE)
+
+  await Promise.all(
+    Array.from({ length: batchCount }, async (_, b) => {
+      const start = b * BULK_BATCH_SIZE
+      const batch = points.slice(start, start + BULK_BATCH_SIZE)
+      try {
+        const fetched = await fetchForecastBatch(batch)
+        for (let j = 0; j < fetched.length; j++) results[start + j] = fetched[j]
+      } catch (error) {
+        console.error('Open-Meteo batch failed; its points fall back to stale/omit', error)
+      }
+    }),
+  )
+
+  return results
+}
+
+async function fetchForecastBatch(points: Point[]): Promise<Array<CityForecast | undefined>> {
   const latitude = points.map((p) => p.lat).join(',')
   const longitude = points.map((p) => p.lng).join(',')
   const { openMeteoContact, openMeteoApiKey, openMeteoBaseUrl } = useRuntimeConfig()
@@ -96,7 +126,9 @@ async function fetchBulkForecast(points: Point[]): Promise<Array<CityForecast | 
   url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,weather_code')
   url.searchParams.set('forecast_days', String(FORECAST_DAYS))
   url.searchParams.set('timezone', 'auto')
-  url.searchParams.set('models', 'metno_seamless')
+  // best_match lets Open-Meteo pick the best regional model per coordinate — required for
+  // worldwide coverage (the old metno_seamless is a Europe/Nordic-only model).
+  url.searchParams.set('models', 'best_match')
   if (openMeteoApiKey) url.searchParams.set('apikey', openMeteoApiKey)
 
   const response = await $fetch<OpenMeteoResponse | OpenMeteoResponse[]>(url.toString(), {

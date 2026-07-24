@@ -62,7 +62,8 @@ const props = defineProps<{
 
 const { favorites, isFavorite, toggle: toggleFavorite } = useFavorites()
 
-const EUROPE_BOUNDS: [number, number, number, number] = [-30, 30, 50, 75]
+// Web Mercator only projects to about ±85.05° latitude; clamp view latitudes to that.
+const MAX_MERCATOR_LAT = 85
 
 const container = ref<HTMLDivElement>()
 const loading = ref(false)
@@ -84,21 +85,53 @@ let abortController: AbortController | undefined
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 let markers: CityMarker[] = []
 
+// Fallback world overview when there's no shared link and no IP geolocation.
+const WORLD_CENTER: [number, number] = [0, 25]
+const WORLD_ZOOM = 2
+
+/**
+ * The camera to open at, in precedence order: a shared ?lat&lng link wins; otherwise the visitor's
+ * approximate location from coarse IP geolocation (Vercel edge headers via /api/geo); otherwise a
+ * world overview. The geo lookup is a fast same-origin header echo, but it's time-capped so a slow
+ * or blocked request never holds up the map, and it's client-side so the SSR HTML stays generic
+ * (no per-user data baked into a cacheable page).
+ */
+async function resolveInitialCamera(): Promise<{ center: [number, number]; zoom: number }> {
+  if (props.initialView) {
+    return { center: [props.initialView.lng, props.initialView.lat], zoom: props.initialView.zoom }
+  }
+  try {
+    const geo = await $fetch<{ lat?: number; lng?: number; zoom?: number }>('/api/geo', {
+      timeout: 1500,
+    })
+    if (typeof geo?.lat === 'number' && typeof geo?.lng === 'number') {
+      return { center: [geo.lng, geo.lat], zoom: geo.zoom ?? WORLD_ZOOM }
+    }
+  } catch {
+    // No geolocation (off-Vercel, blocked, or timed out) — fall back to the world overview.
+  }
+  return { center: WORLD_CENTER, zoom: WORLD_ZOOM }
+}
+
 onMounted(async () => {
   const maplibregl = (await import('maplibre-gl')).default
   await import('maplibre-gl/dist/maplibre-gl.css')
 
   if (!container.value) return
 
+  const { center, zoom } = await resolveInitialCamera()
+
   map = new maplibregl.Map({
     container: container.value,
     // Minimal Positron base, retinted to a warm vintage-poster palette in tintBasemap().
     style: 'https://tiles.openfreemap.org/styles/positron',
-    center: props.initialView ? [props.initialView.lng, props.initialView.lat] : [10, 50],
-    zoom: props.initialView?.zoom ?? 3.5,
-    minZoom: 2,
+    center,
+    zoom,
+    minZoom: 1,
     maxZoom: 12,
-    maxBounds: EUROPE_BOUNDS,
+    // No maxBounds: a whole-world map must let you zoom out until the world is narrower than the
+    // viewport, and MapLibre's maxBounds constrain crashes in exactly that case. Default world
+    // behavior (renderWorldCopies) handles it; getBounds() is normalized in currentView() instead.
     dragRotate: false,
     pitchWithRotate: false,
   })
@@ -245,7 +278,7 @@ async function shareView() {
 
   try {
     if (navigator.share) {
-      await navigator.share({ title: 'T-Shirt Weather', text: 'Weather across Europe', url })
+      await navigator.share({ title: 'T-Shirt Weather', text: 'Weather around the world', url })
       return
     }
   } catch {
@@ -268,19 +301,44 @@ function clearMarkers() {
   markers = []
 }
 
-/** Favorite ids whose coordinates fall within the current map bounds. */
-function inViewFavorites(bounds: ReturnType<NonNullable<typeof map>['getBounds']>): string[] {
+interface ViewBBox {
+  west: number
+  south: number
+  east: number
+  north: number
+}
+
+/**
+ * The current viewport as a lng/lat bbox normalized into valid ranges. The world map can wrap and
+ * be panned past ±180, so we re-derive the longitude window from the wrapped center + span and clamp
+ * it (treating a near-global span as the whole world). This keeps the server bbox — and the
+ * quantization/favorites math built on it — antimeridian-free with no wrap handling downstream.
+ */
+function currentView(): ViewBBox {
+  const b = map!.getBounds()
+  const north = Math.min(MAX_MERCATOR_LAT, b.getNorth())
+  const south = Math.max(-MAX_MERCATOR_LAT, b.getSouth())
+  const lngSpan = b.getEast() - b.getWest()
+  // Zoomed out far enough to see (about) the whole world → just query all longitudes.
+  if (lngSpan >= 350) return { west: -180, south, east: 180, north }
+  // Wrap the center into [-180, 180] and rebuild the window around it, clamped at the seam.
+  const centerLng = (((map!.getCenter().lng + 180) % 360) + 360) % 360 - 180
+  return {
+    west: Math.max(-180, centerLng - lngSpan / 2),
+    south,
+    east: Math.min(180, centerLng + lngSpan / 2),
+    north,
+  }
+}
+
+/** Favorite ids whose coordinates fall within the current (normalized) map view. */
+function inViewFavorites(view: ViewBBox): string[] {
   const ids: string[] = []
   for (const id of favorites.value) {
     const comma = id.indexOf(',')
     const lng = Number(id.slice(0, comma))
     const lat = Number(id.slice(comma + 1))
-    if (
-      lng >= bounds.getWest() &&
-      lng <= bounds.getEast() &&
-      lat >= bounds.getSouth() &&
-      lat <= bounds.getNorth()
-    ) {
+    if (lng >= view.west && lng <= view.east && lat >= view.south && lat <= view.north) {
       ids.push(id)
     }
   }
@@ -297,7 +355,7 @@ function localDay(): string {
 
 async function refreshData() {
   if (!map) return
-  const bounds = map.getBounds()
+  const view = currentView()
   abortController?.abort()
   const controller = new AbortController()
   abortController = controller
@@ -309,7 +367,7 @@ async function refreshData() {
     let data: CityFeatureCollection
     if (props.favoritesOnly) {
       // Personalized + zoom-independent: fetch the in-view favorites directly (not cached).
-      const ids = inViewFavorites(bounds)
+      const ids = inViewFavorites(view)
       data = ids.length
         ? await $fetch<CityFeatureCollection>('/api/favorites-forecast', {
             method: 'POST',
@@ -333,10 +391,10 @@ async function refreshData() {
 
       data = await $fetch<CityFeatureCollection>('/api/city-forecast', {
         query: {
-          minLng: snapDown(bounds.getWest()),
-          minLat: snapDown(bounds.getSouth()),
-          maxLng: snapUp(bounds.getEast()),
-          maxLat: snapUp(bounds.getNorth()),
+          minLng: snapDown(view.west),
+          minLat: snapDown(view.south),
+          maxLng: snapUp(view.east),
+          maxLat: snapUp(view.north),
           zoom: zoomTier,
           day: localDay(),
         },

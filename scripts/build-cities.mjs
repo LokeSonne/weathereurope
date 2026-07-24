@@ -1,6 +1,13 @@
 #!/usr/bin/env node
-// Regenerates server/data/cities.json from the GeoNames "cities5000" dump
-// (cities with population > 5,000), filtered to Europe.
+// Regenerates the worldwide city dataset from the GeoNames "cities5000" dump
+// (every place with population > 5,000), split for on-demand loading:
+//
+//   server/data/cities-prominent.json   — capitals + big cities (pop >= PROMINENT_FLOOR).
+//                                          Small, imported at boot, serves wide/mid zoom.
+//   server/data/cities/{cx}_{cy}.json    — the long tail (smaller cities), bucketed into a
+//                                          spatial grid. Loaded on demand, only at high zoom
+//                                          where the viewport spans just a few cells.
+//   server/data/cities-manifest.json     — grid config + the set of non-empty tail cells.
 //
 //   node scripts/build-cities.mjs        # download + build
 //
@@ -8,26 +15,32 @@
 // and is attributed in the app UI. Requires the `unzip` binary on PATH.
 
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync, existsSync, mkdtempSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = join(__dirname, '..', 'server', 'data', 'cities.json')
+const DATA_DIR = join(__dirname, '..', 'server', 'data')
+const CHUNK_DIR = join(DATA_DIR, 'cities')
 const SOURCE_URL = 'https://download.geonames.org/export/dump/cities5000.zip'
 
-// European country codes (ISO2). RU/TR/UA are kept; the bounding box clips them to
-// their European parts.
-const EUROPE_CC = new Set([
-  'AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FO',
-  'FI', 'FR', 'DE', 'GI', 'GR', 'GG', 'HU', 'IS', 'IE', 'IM', 'IT', 'JE', 'XK',
-  'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO', 'PL', 'PT',
-  'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR', 'UA', 'GB', 'VA',
-])
+// A city is "prominent" (bundled, always available) if it's a national capital or clears this
+// population floor. Everything else is tail, loaded on demand. Keep this aligned with the map's
+// zoom→population tiers (minPopForZoom): the tail is only queried once the zoom threshold drops
+// below PROMINENT_FLOOR, so the prominent set must cover every wider tier on its own.
+const PROMINENT_FLOOR = 100_000
 
-// Must match EUROPE_BOUNDS used by the map / grid selection.
-const BBOX = { minLng: -25, minLat: 34, maxLng: 45, maxLat: 72 }
+// Tail grid cell size in degrees. Smaller = more, smaller files (less over-fetch at high zoom);
+// larger = fewer files (more over-fetch). Emitted in the manifest so the server uses the same value.
+const CELL_DEG = 10
+
+/** Non-negative grid indices so chunk filenames have no minus signs. */
+function cellKey(lng, lat) {
+  const cx = Math.floor((lng + 180) / CELL_DEG)
+  const cy = Math.floor((lat + 90) / CELL_DEG)
+  return `${cx}_${cy}`
+}
 
 function loadRawLines() {
   const dir = mkdtempSync(join(tmpdir(), 'geonames-'))
@@ -38,10 +51,15 @@ function loadRawLines() {
   execSync(`curl -sSL -o "${zip}" "${SOURCE_URL}"`, { stdio: 'inherit' })
   execSync(`unzip -o "${zip}" -d "${dir}"`, { stdio: 'ignore' })
   if (!existsSync(txt)) throw new Error('cities5000.txt not found after unzip')
-  return readFileSync(txt, 'utf8').split('\n')
+  const lines = readFileSync(txt, 'utf8').split('\n')
+  rmSync(dir, { recursive: true, force: true })
+  return lines
 }
 
-const cities = []
+const prominent = []
+/** @type {Map<string, object[]>} tail cities grouped by grid cell */
+const tail = new Map()
+
 for (const line of loadRawLines()) {
   if (!line) continue
   // GeoNames tab-separated columns: 1=name, 4=lat, 5=lng, 7=featureCode, 8=countryCode, 14=population.
@@ -53,21 +71,59 @@ for (const line of loadRawLines()) {
   const cc = c[8]
   const pop = Number(c[14])
 
-  if (!EUROPE_CC.has(cc)) continue
-  if (lng < BBOX.minLng || lng > BBOX.maxLng || lat < BBOX.minLat || lat > BBOX.maxLat) continue
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue
 
-  cities.push({
+  const city = {
     name,
     country: cc,
     lat: Math.round(lat * 1e4) / 1e4,
     lng: Math.round(lng * 1e4) / 1e4,
     pop,
     capital: featureCode === 'PPLC', // PPLC = national capital
-  })
+  }
+
+  if (city.capital || pop >= PROMINENT_FLOOR) {
+    prominent.push(city)
+  } else {
+    const key = cellKey(city.lng, city.lat)
+    let bucket = tail.get(key)
+    if (!bucket) tail.set(key, (bucket = []))
+    bucket.push(city)
+  }
 }
 
-// Sort by importance so the server can slice the top N cheaply: capitals first, then by population.
-cities.sort((a, b) => (Number(b.capital) - Number(a.capital)) || (b.pop - a.pop))
+// Prominent: capitals first, then population desc — so the server can slice the top N cheaply.
+prominent.sort((a, b) => Number(b.capital) - Number(a.capital) || b.pop - a.pop)
+// Tail cells: population desc within each cell (no capitals here).
+for (const bucket of tail.values()) bucket.sort((a, b) => b.pop - a.pop)
 
-writeFileSync(OUT, JSON.stringify(cities))
-console.log(`Wrote ${cities.length} cities (${cities.filter((c) => c.capital).length} capitals) → ${OUT}`)
+// Clear any stale chunk files from a previous build, then write the fresh set.
+if (existsSync(CHUNK_DIR)) {
+  for (const f of readdirSync(CHUNK_DIR)) if (f.endsWith('.json')) unlinkSync(join(CHUNK_DIR, f))
+} else {
+  mkdirSync(CHUNK_DIR, { recursive: true })
+}
+
+writeFileSync(join(DATA_DIR, 'cities-prominent.json'), JSON.stringify(prominent))
+
+const cells = [...tail.keys()].sort()
+let tailCount = 0
+let maxCellCount = 0
+for (const key of cells) {
+  const bucket = tail.get(key)
+  tailCount += bucket.length
+  maxCellCount = Math.max(maxCellCount, bucket.length)
+  writeFileSync(join(CHUNK_DIR, `${key}.json`), JSON.stringify(bucket))
+}
+
+writeFileSync(
+  join(DATA_DIR, 'cities-manifest.json'),
+  JSON.stringify({ cellDeg: CELL_DEG, prominentFloor: PROMINENT_FLOOR, cells }),
+)
+
+const capitals = prominent.filter((c) => c.capital).length
+console.log(
+  `Wrote ${prominent.length} prominent cities (${capitals} capitals) → cities-prominent.json\n` +
+    `Wrote ${tailCount} tail cities across ${cells.length} cells (largest ${maxCellCount}) → cities/\n` +
+    `Total: ${prominent.length + tailCount} cities worldwide.`,
+)

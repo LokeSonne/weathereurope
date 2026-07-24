@@ -53,12 +53,12 @@ describe('resolveForecasts', () => {
     expect(forecast!.temps).toHaveLength(8)
     expect(forecast!.temps[1]).toBe(21) // daily max[1]
 
-    const cached = storage.map.get('forecast:48.85:2.35') as { fetchedAt: number }
+    const cached = storage.map.get('forecast:v2:48.85:2.35') as { fetchedAt: number }
     expect(cached.fetchedAt).toBe(NOW.getTime())
   })
 
   it('serves a fresh cache hit without calling Open-Meteo', async () => {
-    storage.map.set('forecast:10:20', {
+    storage.map.set('forecast:v2:10:20', {
       temps: [5, 6, 7, 8, 9, 10, 11, 12],
       codes: [1, 1, 1, 1, 1, 1, 1, 1],
       fetchedAt: NOW.getTime(),
@@ -71,7 +71,7 @@ describe('resolveForecasts', () => {
   })
 
   it('serves stale data when the upstream request fails', async () => {
-    storage.map.set('forecast:10:20', {
+    storage.map.set('forecast:v2:10:20', {
       temps: [1, 2, 3, 4, 5, 6, 7, 8],
       codes: [3, 3, 3, 3, 3, 3, 3, 3],
       fetchedAt: NOW.getTime() - 3 * 60 * 60 * 1000, // 3h old → stale
