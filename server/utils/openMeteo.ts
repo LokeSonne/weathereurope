@@ -44,16 +44,20 @@ export async function resolveForecasts(points: Point[]): Promise<Array<CityForec
   const results = new Array<CityForecast | undefined>(points.length)
   const misses: Array<{ index: number; point: Point; stale?: CachedForecast }> = []
 
-  await Promise.all(
-    points.map(async (point, index) => {
-      const cached = await storage.getItem<CachedForecast>(cacheKey(point))
-      if (cached && now - cached.fetchedAt < FRESH_TTL_MS) {
-        results[index] = { temps: cached.temps, codes: cached.codes }
-      } else {
-        misses.push({ index, point, stale: cached ?? undefined })
-      }
-    }),
-  )
+  // One batched read (a single Redis MGET on the Upstash backend) instead of one GET per point.
+  // A cold viewport — or a request engineered to miss the HTTP/edge caches (unique URL each time) —
+  // then costs one storage round-trip, not up to MAX_CITIES of them, so cache-busting can't fan a
+  // single request out into hundreds of storage commands. Results come back in input order.
+  const entries = await storage.getItems(points.map((point) => cacheKey(point)))
+
+  points.forEach((point, index) => {
+    const cached = entries[index]?.value as CachedForecast | null | undefined
+    if (cached && now - cached.fetchedAt < FRESH_TTL_MS) {
+      results[index] = { temps: cached.temps, codes: cached.codes }
+    } else {
+      misses.push({ index, point, stale: cached ?? undefined })
+    }
+  })
 
   if (misses.length === 0) return results
 

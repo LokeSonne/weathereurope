@@ -6,6 +6,10 @@ function createMemoryStorage() {
   return {
     map,
     getItem: vi.fn(async (key: string) => (map.has(key) ? map.get(key) : null)),
+    // Mirrors unstorage's batch read: returns { key, value } per input key, in order.
+    getItems: vi.fn(async (keys: string[]) =>
+      keys.map((key) => ({ key, value: map.has(key) ? map.get(key) : null })),
+    ),
     setItem: vi.fn(async (key: string, value: unknown) => {
       map.set(key, value)
     }),

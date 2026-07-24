@@ -33,6 +33,15 @@ const MAX_CITIES = 250
 /** Hard cap on favorite ids honored per request (bounds the Open-Meteo fan-out). */
 const MAX_FAVORITES = 200
 
+/**
+ * Hard cap on tail chunks loaded for a single viewport. A legitimate zoom (tail loading only starts
+ * at zoom ≳ 8, where the visible area is small) spans a handful of 10° cells; this ceiling is far
+ * above that. It exists to defang a pathological request — a very high zoom over a world-sized bbox —
+ * that would otherwise load every tail chunk on earth, thrash the LRU, and parse the entire long
+ * tail per request (a cheap-request → heavy-compute amplifier).
+ */
+const MAX_TAIL_CELLS = 16
+
 export interface BBox {
   minLng: number
   minLat: number
@@ -144,8 +153,18 @@ export async function selectCities(bbox: BBox, zoom: number): Promise<City[]> {
   // 2) Long tail — only when the zoom threshold reaches below the prominent floor, and only for
   //    the viewport's cells. Merged by population so the cap keeps the most significant towns.
   if (minPop < PROMINENT_FLOOR && selected.length < MAX_CITIES) {
+    const cells = cellsForBBox(bbox)
+    // Cap the tail fan-out. A real high-zoom viewport touches only a few cells; more than
+    // MAX_TAIL_CELLS means an abnormally wide high-zoom request (only reachable by calling the API
+    // directly, not via the map), so trim it instead of loading/parsing the whole long tail.
+    if (cells.length > MAX_TAIL_CELLS) {
+      console.warn(
+        `[cities] viewport spans ${cells.length} tail cells (cap ${MAX_TAIL_CELLS}); trimming. Expected only for abnormally wide high-zoom requests.`,
+      )
+      cells.length = MAX_TAIL_CELLS
+    }
     const tailMatches: City[] = []
-    for (const key of cellsForBBox(bbox)) {
+    for (const key of cells) {
       const chunk = await loadTailChunk(key)
       for (const city of chunk) {
         if (city.pop < minPop) break // chunk is population-desc → nothing smaller qualifies

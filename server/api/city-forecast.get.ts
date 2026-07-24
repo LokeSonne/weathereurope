@@ -20,7 +20,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'minLng, minLat, maxLng, maxLat and zoom are required numeric query params' })
   }
 
-  const cities = await selectCities(bbox, zoom)
+  // Clamp zoom to a sane range (the client map maxes at 12; selection saturates by ~9) so an
+  // out-of-band value can't skew the selection math — the tail fan-out is separately capped in
+  // selectCities. Bogus bbox values are clamped downstream where the cell math needs valid ranges.
+  const zoomTier = Math.min(22, Math.max(0, zoom))
+
+  const cities = await selectCities(bbox, zoomTier)
   const forecasts = await resolveForecasts(cities.map((c) => ({ lat: c.lat, lng: c.lng })))
 
   // Quantized requests (see WeatherMap.refreshData) make identical viewports share a URL, so the

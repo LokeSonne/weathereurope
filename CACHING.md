@@ -100,7 +100,10 @@ Two TTLs govern each entry:
 
 Resolution flow for a batch of points:
 
-1. Read every point from cache. Points fresh (`< 40 min`) are served immediately.
+1. Read every point from cache in **one batched request** (`storage.getItems` → a single Redis
+   `MGET`, not one `GET` per city), so a cold viewport — or a request engineered to miss the HTTP
+   layers with a unique URL — costs one storage round-trip rather than up to `MAX_CITIES` of them.
+   Points fresh (`< 40 min`) are served immediately.
 2. Stale or absent points are collected and refetched in **one bulk Open-Meteo call**
    ([`fetchBulkForecast`](server/utils/openMeteo.ts#L82)) — many coordinates in a single request.
 3. On success, results are written back with the 24-h TTL.
@@ -123,6 +126,13 @@ The cache uses Nitro's storage abstraction, so the backend is swappable via
 
 > The credentials are read at **build time** (Vercel injects them then), so the driver is baked into
 > the deployed bundle. If you add them after a deploy, **redeploy** for them to take effect.
+
+Because that failure is invisible (the app still works, just uncached), a boot-time check
+([server/plugins/storage-check.ts](server/plugins/storage-check.ts)) inspects the **actual mounted
+driver** on startup — so it catches the "added the vars but didn't redeploy" trap, not just missing
+env vars — and, when a durable driver is mounted, does one live round-trip to catch wrong/expired
+credentials. On Vercel it logs a loud `ERROR` if the cache is in-memory or unreachable; it's never
+fatal (a degraded cache still serves).
 
 ---
 
@@ -179,11 +189,19 @@ viewport are loaded before you pan into them.
 
 ## Related: rate limiting
 
-Not a cache, but it shares the same storage backend. [`enforceRateLimit`](server/utils/rateLimit.ts)
-uses the `ratelimit` mount for a best-effort per-IP fixed-window limiter (currently **60 req/min**,
-set in the endpoint handlers). Backed by Upstash it's shared across instances; in dev it's
-per-instance. It's an abuse backstop, not a billing gate — the get/set isn't atomic, so it can
-slightly undercount under bursts.
+[`enforceRateLimit`](server/utils/rateLimit.ts) is a per-IP fixed-window limiter (currently **60
+req/min**, set in the endpoint handlers). On Upstash the counter is bumped with an **atomic `INCR`**
+(+ `EXPIRE` on the window's first hit), so a concurrent burst can't slip past the limit the way a
+read-then-write can; in dev (no Upstash) it degrades to a best-effort non-atomic count on in-memory
+storage, which is fine for a single un-attacked instance. The bucket key prefers `x-real-ip` (set by
+the platform, not client-forgeable) over the left-most `x-forwarded-for` hop, which a client can
+spoof to rotate buckets.
+
+Its scope is deliberately narrow: it's a backstop for **function-invocation / storage-command cost**,
+not the Open-Meteo guard. Upstream exposure is bounded structurally — the coordinates that can reach
+Open-Meteo are fixed (the bundled city dataset) and cached per city, so no request shape can inject
+new coordinates. And per-IP limits are inherently evadable by IP rotation / botnets, so **Vercel's
+platform firewall is the front line** for volumetric abuse; this limiter is the floor beneath it.
 
 ---
 
@@ -198,6 +216,7 @@ slightly undercount under bursts.
 | Rate limit `60 / 60s` | [city-forecast.get.ts:7](server/api/city-forecast.get.ts#L7), [favorites-forecast.post.ts:12](server/api/favorites-forecast.post.ts#L12) | Per-IP request ceiling |
 | Storage driver | [nuxt.config.ts](nuxt.config.ts) (`nitro.storage`) | Upstash / KV / in-memory / other Nitro driver |
 | `MAX_CITIES` (250) | [cities.ts](server/utils/cities.ts) | Cities per response; bounds the Open-Meteo fan-out |
+| `MAX_TAIL_CELLS` (16) | [cities.ts](server/utils/cities.ts) | Max tail chunks loaded per viewport; defangs a wide high-zoom request from parsing the whole long tail |
 | `PROMINENT_FLOOR` (100k) / `CELL_DEG` (10°) | [build-cities.mjs](scripts/build-cities.mjs) | Bundled-index size vs on-demand tail; chunk granularity |
 | Tail-chunk LRU size (64) | [cities.ts](server/utils/cities.ts) | How many tail cells stay hot in memory per instance |
 
@@ -212,3 +231,6 @@ slightly undercount under bursts.
   timezones. Shorten `FRESH_TTL_MS` or key the cache by day if this matters for your deployment.
 - Quantization pads the fetch beyond the visible viewport; at the highest zoom tiers a dense padded
   area can exceed `MAX_CITIES` ([cities.ts](server/utils/cities.ts)) and be trimmed at the edges.
+- A request that combines a very high zoom with an abnormally wide bbox (only reachable by calling
+  the API directly — the map never sends it) is trimmed to `MAX_TAIL_CELLS` tail chunks and logs a
+  warning; a legitimate high-zoom viewport is small and stays well under the cap.

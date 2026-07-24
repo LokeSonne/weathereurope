@@ -22,6 +22,8 @@ beforeEach(() => {
   storage = createMemoryStorage()
   setHeader = vi.fn()
   vi.stubGlobal('useStorage', () => storage)
+  // No x-real-ip in tests → clientIp falls through to getRequestIP.
+  vi.stubGlobal('getHeader', () => undefined)
   vi.stubGlobal('getRequestIP', () => '1.2.3.4')
   vi.stubGlobal('setResponseHeader', setHeader)
   vi.stubGlobal('createError', (o: { statusCode: number; statusMessage: string }) =>
