@@ -15,7 +15,8 @@
     "typecheck": "nuxt typecheck",
     "lint": "eslint .",
     "test": "vitest run",
-    "build:cities": "node scripts/build-cities.mjs"
+    "build:cities": "node scripts/build-cities.mjs",
+    "build:icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@nuxt/eslint": "1.16.0",
@@ -31,6 +32,8 @@
   },
   "devDependencies": {
     "@nuxt/fonts": "^0.14.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
     "vitest": "^4.1.10",
     "vue-tsc": "^2.2.0"
   }

@@ -83,6 +83,13 @@ opacity) sits above the map and below the controls (`.map-grain`). Just enough t
   spans the top edge-to-edge and the attribution becomes a full-width bottom band, so a
   rectangular margin would cross both. The basemap, chips and controls carry the look on mobile.
 - **Decluttered dot** — the minimal fallback keeps a cream ring so it still reads as a place.
+- **App icon** (`public/favicon.svg`) — the map wordmark's lockup as a mark: a **"TW" monogram**
+  in Poiret One (outlined to a path, so no font is needed) between two **flamingo rules**, on the
+  aqua tile, with a **flat single-tone Deco sun** in the top-left corner (the one place a warm
+  gold appears — no gradient, per the flat-print rule). Below ~32px the letters can't hold, so the
+  small `favicon.ico` frames step down: a single-rule "TW" at 32px and **two flamingo rules only**
+  at 16px. The raster set (`pwa-*`, `apple-touch-icon`, maskable, `favicon.ico`) is regenerated
+  from the mark with `pnpm build:icons`; `og-image.png` is a separate social card.
 
 ## Typography
 
